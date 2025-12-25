@@ -1,0 +1,53 @@
+TECNOLOGÍAS UTILIZADAS EN ESTE PROYECTO
+
+1. React (v19)
+   - Uso: Biblioteca principal de JavaScript para construir la interfaz de usuario.
+   - Función: Permite crear componentes reutilizables y gestionar el estado de la aplicación.
+
+2. Vite
+   - Uso: Herramienta de compilación y servidor de desarrollo.
+   - Función: Proporciona un entorno de desarrollo extremadamente rápido y optimiza la construcción final para producción.
+
+3. TypeScript
+   - Uso: Lenguaje de programación.
+   - Función: Añade tipado estático a JavaScript, lo que ayuda a prevenir errores y mejora la experiencia de desarrollo con autocompletado y documentación integrada.
+
+4. Tailwind CSS
+   - Uso: Framework de CSS.
+   - Función: Facilita el estilizado rápido de componentes mediante clases utilitarias predefinidas directamente en el HTML/JSX.
+
+5. Firebase
+   - Uso: Plataforma backend "como servicio" (BaaS).
+   - Función: Se utiliza para la base de datos (Firestore), y potencialmente autenticación y hosting. Permite almacenar datos de las tasaciones y usuarios.
+
+6. ImageKit
+   - Uso: Gestión de activos digitales (DAM) y CDN de imágenes.
+   - Función: Optimización, transformación y entrega rápida de imágenes en la aplicación.
+
+7. React Router (react-router-dom)
+   - Uso: Enrutamiento del lado del cliente.
+   - Función: Gestiona la navegación entre diferentes vistas o páginas de la aplicación sin recargar el navegador.
+
+8. Framer Motion
+   - Uso: Biblioteca de animaciones.
+   - Función: Permite crear transiciones y animaciones fluidas y complejas en los componentes React.
+
+9. html2canvas & jspdf
+   - Uso: Generación de documentos.
+   - Función: `html2canvas` captura partes de la pantalla como imágenes, y `jspdf` se utiliza para generar archivos PDF descargables (ej. reportes de tasación).
+
+10. Recharts
+    - Uso: Visualización de datos.
+    - Función: Biblioteca para crear gráficos estadísticos y visualizaciones de datos dentro de React.
+
+11. Lucide React
+    - Uso: Iconografía.
+    - Función: Proporciona una colección de iconos vectoriales ligeros y consistentes.
+
+12. PapaParse
+    - Uso: Procesamiento de datos.
+    - Función: Permite leer y analizar archivos CSV fácilmente dentro del navegador.
+
+13. ESLint
+    - Uso: Calidad de código.
+    - Función: Analiza el código para encontrar problemas, asegurar consistencia y evitar errores comunes.
