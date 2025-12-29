@@ -6,6 +6,7 @@ import { useClients } from '../context/ClientsContext';
 import { useActiveValuation } from '../hooks/useActiveValuation';
 import { useNotes } from '../hooks/useNotes';
 import NotesModal from '../components/modals/NotesModal';
+import ScheduleMeetingModal from '../components/modals/ScheduleMeetingModal';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../lib/firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -45,6 +46,7 @@ const ControlPanel = () => {
     const { handleNewValuation } = useActiveValuation();
     const { notes } = useNotes();
     const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
+    const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
     // --- Google Calendar Logic (Inlined) ---
     const { user } = useAuth();
@@ -237,6 +239,11 @@ const ControlPanel = () => {
                 isOpen={isNotesModalOpen}
                 onClose={() => setIsNotesModalOpen(false)}
             />
+            <ScheduleMeetingModal
+                isOpen={isScheduleModalOpen}
+                onClose={() => setIsScheduleModalOpen(false)}
+                onSuccess={() => listUpcomingEvents()}
+            />
 
             <div className="flex items-center justify-between">
                 <div>
@@ -335,7 +342,7 @@ const ControlPanel = () => {
                                 <p className="text-slate-600 font-medium mb-1">Todo despejado</p>
                                 <p className="text-xs text-slate-400 mb-4">No tienes reuniones próximas en tu calendario.</p>
                                 <button
-                                    onClick={() => navigate('/app/calendar')}
+                                    onClick={() => setIsScheduleModalOpen(true)}
                                     className="text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-md transition-colors"
                                 >
                                     <Plus className="w-3 h-3 inline mr-1" />

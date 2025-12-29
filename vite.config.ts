@@ -15,20 +15,20 @@ export default defineConfig(({ mode }) => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
         manifest: {
-          name: 'Tasaciones App',
-          short_name: 'Tasaciones',
+          name: 'InmoCRM',
+          short_name: 'InmoCRM',
           description: 'Aplicación de Gestión de Tasaciones',
           theme_color: '#ffffff',
           display: 'standalone',
           background_color: '#ffffff',
           icons: [
             {
-              src: 'logo_lpz.png',
+              src: 'logo-pwa.png',
               sizes: '192x192',
               type: 'image/png'
             },
             {
-              src: 'logo_lpz.png',
+              src: 'logo-pwa.png',
               sizes: '512x512',
               type: 'image/png'
             }
