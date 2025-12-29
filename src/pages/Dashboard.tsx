@@ -3,12 +3,16 @@ import {
   Upload, Home, Trash2, AlertCircle, FileSpreadsheet, FileText, X,
   Pencil, ChevronDown, ChevronUp, CheckSquare, BarChart, Sparkles, MapPin, Plus, Save, User, Users
 } from 'lucide-react';
-import { cn } from '../components/ui/Card'; // Importing helper if needed or just use clsx/tailwind directly
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '../components/ui/Card';
 import { Card } from '../components/ui/Card';
 import { StatCard } from '../components/ui/StatCard';
 import ReportView from '../components/ReportView';
-// import { useAuth } from '../context/AuthContext'; // Removed unused import
-import { useValuation } from '../hooks/useValuation';
+import { useActiveValuation } from '../hooks/useActiveValuation';
+import { useSavedValuations } from '../hooks/useSavedValuations';
+import { useUserProfile } from '../hooks/useUserProfile';
+import { useUI } from '../hooks/useUI';
+import { useGoogleSheetImport } from '../hooks/useGoogleSheetImport';
 import { useSavedAgents } from '../hooks/useSavedAgents';
 import { formatCurrency, formatNumber } from '../utils/format';
 import { SURFACE_TYPES, DEFAULT_FACTORS } from '../constants';
@@ -29,49 +33,45 @@ function Dashboard() {
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
     libraries
   });
-  // const { logout } = useAuth(); // Removed unused hook
 
   const {
     target, updateTarget,
-    comparables, addComparable, updateComparable, deleteComparable, processedComparables,
-    sheetUrl, setSheetUrl, handleImportFromSheet,
-    brokerName, setBrokerName,
-    matricula, setMatricula,
-    pdfTheme,
-    stats, valuation, targetHomogenizedSurface,
-    handleSaveValuation
-  } = useValuation();
+    comparables, addComparable, updateComparable, deleteComparable,
+    processedComparables, stats, valuation, targetHomogenizedSurface,
+    clientName, setClientName,
+    currentValuationId, setCurrentValuationId,
+    isDirty, setIsDirty
+  } = useActiveValuation();
 
-  const {
-    geminiModalOpen, setGeminiModalOpen,
-    clientName, setClientName
-  } = useValuation();
-
+  const { handleSaveValuation } = useSavedValuations();
+  const { brokerName, setBrokerName, matricula, setMatricula, pdfTheme } = useUserProfile();
+  const { geminiModalOpen, setGeminiModalOpen } = useUI();
+  const { sheetUrl, setSheetUrl, handleImportFromSheet } = useGoogleSheetImport();
   const { clients } = useClients();
-
-  const handleSelectClient = (clientId: string) => {
-    const client = clients.find(c => c.id === clientId);
-    if (client) {
-      setClientName(client.name);
-    }
-  };
 
   const [editingCompId, setEditingCompId] = useState<string | null>(null);
   const [showOptionalTarget, setShowOptionalTarget] = useState(false);
-
   const { agents, addAgent, loading: loadingAgents } = useSavedAgents();
   const [isSavingAgent, setIsSavingAgent] = useState(false);
+  const [mapSnapshot, setMapSnapshot] = useState<{ target: any, comparables: any[] } | null>(null);
+  const [expandedMobileCards, setExpandedMobileCards] = useState<string[]>([]);
+
+  const handleSelectClient = (clientId: string) => {
+    const client = clients.find(c => c.id === clientId);
+    if (client) setClientName(client.name);
+  };
 
   const handleSaveAgent = async () => {
     if (!brokerName || !matricula) return;
     setIsSavingAgent(true);
-    try {
-      await addAgent(brokerName, matricula);
-    } catch (error) {
-      console.error("Failed to save agent", error);
-    } finally {
-      setIsSavingAgent(false);
-    }
+    try { await addAgent(brokerName, matricula); } 
+    catch (error) { console.error("Failed to save agent", error); } 
+    finally { setIsSavingAgent(false); }
+  };
+  
+  const onSaveSuccess = (id: string) => {
+      setCurrentValuationId(id);
+      setIsDirty(false);
   };
 
   const handleSelectAgent = (agentId: string) => {
@@ -83,813 +83,119 @@ function Dashboard() {
     }
   };
 
-  const editingComparable = useMemo(() =>
-    comparables.find(c => c.id === editingCompId) || null
-    , [comparables, editingCompId]);
-
-  /* Manual Map Update Logic */
-  const [mapSnapshot, setMapSnapshot] = useState<{ target: any, comparables: any[] } | null>(null);
+  const editingComparable = useMemo(() => comparables.find(c => c.id === editingCompId) || null, [comparables, editingCompId]);
 
   const handleUpdateMap = () => {
-    setMapSnapshot({
-      target: { ...target },
-      comparables: [...processedComparables]
-    });
+    setMapSnapshot({ target: { ...target }, comparables: [...processedComparables] });
+  };
+
+  const toggleMobileCard = (id: string) => {
+    setExpandedMobileCards(prev => prev.includes(id) ? prev.filter(cardId => cardId !== id) : [...prev, id]);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-8">
-      {/* Header removed - using PrivateLayout */}
-      <div className="max-w-7xl mx-auto px-4 pt-6 flex items-center justify-between">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-24 md:pb-8">
+      <div className="max-w-7xl mx-auto px-4 pt-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold font-heading text-slate-900">Administrador de tasaciones</h1>
           <p className="text-slate-500 text-sm">Gestiona tus tasaciones y comparables</p>
         </div>
         <div className="flex items-center gap-3">
-          {/* Import Group */}
-          <div className="hidden md:flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 focus-within:ring-2 focus-within:ring-brand/20 focus-within:border-brand transition-all shadow-sm">
-            <div className="pl-2 pr-1 text-slate-400">
-              <FileSpreadsheet className="w-4 h-4" />
-            </div>
-            <input
-              type="text"
-              value={sheetUrl}
-              onChange={(e) => setSheetUrl(e.target.value)}
-              placeholder="Pegar link de Google Sheets..."
-              className="bg-transparent border-none focus:ring-0 text-xs w-48 text-slate-700 placeholder:text-slate-400 py-1.5"
-            />
-            <button
-              onClick={handleImportFromSheet}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-700 rounded-md transition-all active:scale-95 shadow-sm"
-            >
-              <Upload className="w-3 h-3" /> Importar
-            </button>
+          <div className="hidden md:flex items-center gap-1 bg-white p-1 rounded-lg border">
+            <FileSpreadsheet className="w-4 h-4 text-slate-400 ml-2" />
+            <input type="text" value={sheetUrl} onChange={(e) => setSheetUrl(e.target.value)} placeholder="Pegar link de Google Sheets..." className="bg-transparent border-none focus:ring-0 text-xs w-48" />
+            <button onClick={handleImportFromSheet} className="px-3 py-1.5 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-700 rounded-md"><Upload className="w-3 h-3" /> Importar</button>
           </div>
-
-          <div className="h-8 w-px bg-slate-200 mx-1"></div>
-
-          <button onClick={() => setGeminiModalOpen(true)} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors border border-indigo-200/50">
+          <button onClick={() => setGeminiModalOpen(true)} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg border border-indigo-200/50">
             <Sparkles className="w-4 h-4" /> <span className="hidden sm:inline">Consultar IA</span>
           </button>
         </div>
       </div>
 
-
-
-      <GeminiConsultationModal
-        isOpen={geminiModalOpen}
-        onClose={() => setGeminiModalOpen(false)}
-        target={target}
-        comparables={comparables}
-        onAddComparable={addComparable}
-      />
+      <GeminiConsultationModal isOpen={geminiModalOpen} onClose={() => setGeminiModalOpen(false)} target={target} comparables={comparables} onAddComparable={addComparable} />
 
       <main className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-
-        {/* Main Content Stack */}
         <div className="space-y-8">
-
-          {/* 1. Target Property - Full Width */}
-          <Card className="bg-white border-brand/10 shadow-lg shadow-brand/5 overflow-hidden relative">
-            <div className="absolute top-0 left-0 w-full h-1 bg-brand"></div>
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
-                <div className="flex items-center gap-2 text-brand">
-                  <Home className="w-5 h-5" />
-                  <h2 className="font-bold font-heading uppercase tracking-wider text-sm">Propiedad Objetivo</h2>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-lg border border-slate-100">
-                    <span className="text-xs text-slate-500 uppercase font-medium">Sup. Homogenizada</span>
+          <Card className="bg-white border-brand/10 shadow-lg shadow-brand/5 overflow-hidden">
+             <div className="p-4 md:p-6">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 border-b pb-4">
+                <div className="flex items-center gap-2 text-brand"><Home className="w-5 h-5" /><h2 className="font-bold font-heading uppercase tracking-wider text-sm">Propiedad Objetivo</h2></div>
+                <div className="mt-2 md:mt-0 flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-lg border self-end">
+                    <span className="text-xs text-slate-500 uppercase font-medium">Sup. Homog.</span>
                     <span className="font-bold text-brand-dark text-lg">{formatNumber(targetHomogenizedSurface)} m²</span>
-                  </div>
                 </div>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-
-                {/* Left Column - Main Info */}
                 <div className="md:col-span-8 space-y-4">
                   <div>
                     <label className="text-xs text-slate-500 uppercase font-medium">Dirección</label>
-                    {loadError && (
-                      <div className="text-xs text-red-500 mb-1">
-                        Error cargando Google Maps: {loadError.message}
-                      </div>
-                    )}
-                    {isLoaded ? (
-                      <AddressAutocomplete
-                        value={target.address}
-                        onChange={(val, loc) => updateTarget({ address: val, location: loc })}
-                        className="w-full bg-slate-100 border-slate-200 rounded-lg px-3 py-2 mt-1 text-slate-900 focus:ring-brand focus:border-brand"
-                        placeholder="Ej: Av. Libertador 2000"
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        value={target.address}
-                        onChange={e => updateTarget({ address: e.target.value })}
-                        className="w-full bg-slate-100 border-slate-200 rounded-lg px-3 py-2 mt-1 text-slate-900 focus:ring-brand focus:border-brand"
-                        placeholder="Ej: Av. Libertador 2000"
-                      />
-                    )}
+                    {isLoaded ? <AddressAutocomplete value={target.address} onChange={(val, loc) => updateTarget({ address: val, location: loc })} className="w-full mt-1" placeholder="Ej: Av. Libertador 2000" /> : <input type="text" value={target.address} onChange={e => updateTarget({ address: e.target.value })} className="w-full mt-1" placeholder="Ej: Av. Libertador 2000" />}
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs text-slate-500 uppercase font-medium">Sup. Cubierta</label>
-                      <div className="relative mt-1">
-                        <input
-                          type="number"
-                          value={target.coveredSurface}
-                          onChange={e => updateTarget({ coveredSurface: parseFloat(e.target.value) || 0 })}
-                          className="w-full bg-slate-100 border-slate-200 rounded-lg pl-3 pr-8 py-2 text-slate-900 focus:ring-brand focus:border-brand"
-                        />
-                        <span className="absolute right-3 top-2 text-slate-400 text-sm">m²</span>
-                      </div>
+                      <div className="relative mt-1"><input type="number" value={target.coveredSurface} onChange={e => updateTarget({ coveredSurface: parseFloat(e.target.value) || 0 })} className="w-full" /><span className="absolute right-3 top-2 text-slate-400 text-sm">m²</span></div>
                     </div>
                     <div>
                       <label className="text-xs text-slate-500 uppercase font-medium">Sup. Descubierta</label>
-                      <div className="relative mt-1">
-                        <input
-                          type="number"
-                          value={target.uncoveredSurface}
-                          onChange={e => updateTarget({ uncoveredSurface: parseFloat(e.target.value) || 0 })}
-                          className="w-full bg-slate-100 border-slate-200 rounded-lg pl-3 pr-8 py-2 text-slate-900 focus:ring-brand focus:border-brand"
-                        />
-                        <span className="absolute right-3 top-2 text-slate-400 text-sm">m²</span>
-                      </div>
+                      <div className="relative mt-1"><input type="number" value={target.uncoveredSurface} onChange={e => updateTarget({ uncoveredSurface: parseFloat(e.target.value) || 0 })} className="w-full" /><span className="absolute right-3 top-2 text-slate-400 text-sm">m²</span></div>
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-4 gap-4">
-                    <div>
-                      <label className="text-xs text-slate-500 uppercase font-medium">Ambientes</label>
-                      <input
-                        type="number"
-                        value={target.rooms}
-                        onChange={e => updateTarget({ rooms: parseFloat(e.target.value) || 0 })}
-                        className="w-full bg-slate-100 border-slate-200 rounded-lg px-2 py-2 mt-1 text-slate-900 focus:ring-brand focus:border-brand text-center"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-500 uppercase font-medium">Dormitorios</label>
-                      <input
-                        type="number"
-                        value={target.bedrooms}
-                        onChange={e => updateTarget({ bedrooms: parseFloat(e.target.value) || 0 })}
-                        className="w-full bg-slate-100 border-slate-200 rounded-lg px-2 py-2 mt-1 text-slate-900 focus:ring-brand focus:border-brand text-center"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-500 uppercase font-medium">Baños</label>
-                      <input
-                        type="number"
-                        value={target.bathrooms}
-                        onChange={e => updateTarget({ bathrooms: parseFloat(e.target.value) || 0 })}
-                        className="w-full bg-slate-100 border-slate-200 rounded-lg px-2 py-2 mt-1 text-slate-900 focus:ring-brand focus:border-brand text-center"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-500 uppercase font-medium">Antigüedad</label>
-                      <div className="relative mt-1">
-                        <input
-                          type="number"
-                          value={target.age}
-                          onChange={e => updateTarget({ age: parseFloat(e.target.value) || 0 })}
-                          className="w-full bg-slate-100 border-slate-200 rounded-lg pl-3 pr-8 py-2 text-slate-900 focus:ring-brand focus:border-brand text-center"
-                        />
-                        <span className="absolute right-2 top-2 text-slate-400 text-xs">años</span>
-                      </div>
-                    </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div><label className="text-xs text-slate-500 uppercase font-medium">Ambientes</label><input type="number" value={target.rooms} onChange={e => updateTarget({ rooms: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-center" /></div>
+                    <div><label className="text-xs text-slate-500 uppercase font-medium">Dormitorios</label><input type="number" value={target.bedrooms} onChange={e => updateTarget({ bedrooms: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-center" /></div>
+                    <div><label className="text-xs text-slate-500 uppercase font-medium">Baños</label><input type="number" value={target.bathrooms} onChange={e => updateTarget({ bathrooms: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-center" /></div>
+                    <div><label className="text-xs text-slate-500 uppercase font-medium">Antigüedad</label><div className="relative mt-1"><input type="number" value={target.age} onChange={e => updateTarget({ age: parseFloat(e.target.value) || 0 })} className="w-full text-center" /><span className="absolute right-2 top-2 text-slate-400 text-xs">años</span></div></div>
                   </div>
-
                   <div className="flex items-center justify-between pt-2">
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${target.garage ? 'bg-brand border-brand text-white' : 'bg-slate-50 border-slate-300'}`}>
-                        {target.garage && <CheckSquare className="w-4 h-4" />}
-                      </div>
-                      <input
-                        type="checkbox"
-                        className="hidden"
-                        checked={!!target.garage}
-                        onChange={e => updateTarget({ garage: e.target.checked })}
-                      />
-                      <span className="text-sm text-slate-700 font-medium">Cochera</span>
-                    </label>
-                    <button
-                      onClick={() => setShowOptionalTarget(!showOptionalTarget)}
-                      className="flex items-center gap-2 text-brand hover:text-brand-dark transition-colors text-sm font-medium"
-                    >
-                      {showOptionalTarget ? 'Menos Opciones' : 'Más Opciones'}
-                      {showOptionalTarget ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </button>
+                    <label className="flex items-center gap-2 cursor-pointer"><div className={`w-5 h-5 rounded border flex items-center justify-center ${target.garage ? 'bg-brand border-brand text-white' : 'bg-slate-50'}`}>{target.garage && <CheckSquare className="w-4 h-4" />}</div><input type="checkbox" className="hidden" checked={!!target.garage} onChange={e => updateTarget({ garage: e.target.checked })} /><span className="text-sm font-medium">Cochera</span></label>
+                    <button onClick={() => setShowOptionalTarget(!showOptionalTarget)} className="flex items-center gap-2 text-brand text-sm font-medium">{showOptionalTarget ? 'Menos' : 'Más'} Opciones {showOptionalTarget ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}</button>
                   </div>
-
-                  {/* Optional Section */}
-                  {showOptionalTarget && (
-                    <div className="p-4 bg-slate-50 rounded-xl animate-in slide-in-from-top-2 duration-200 border border-slate-100">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div>
-                          <label className="text-xs text-slate-500 uppercase font-medium">Semicubierta</label>
-                          <input type="number" value={target.semiCoveredSurface} onChange={e => updateTarget({ semiCoveredSurface: parseFloat(e.target.value) || 0 })} className="w-full bg-slate-100 border-slate-200 rounded px-2 py-1.5 mt-1 text-sm" />
-                        </div>
-                        <div>
-                          <label className="text-xs text-slate-500 uppercase font-medium">Toilettes</label>
-                          <input type="number" value={target.toilettes} onChange={e => updateTarget({ toilettes: parseFloat(e.target.value) || 0 })} className="w-full bg-slate-100 border-slate-200 rounded px-2 py-1.5 mt-1 text-sm" />
-                        </div>
-                        <div>
-                          <label className="text-xs text-slate-500 uppercase font-medium">Pisos</label>
-                          <input type="text" value={target.floorType || ''} onChange={e => updateTarget({ floorType: e.target.value })} className="w-full bg-slate-100 border-slate-200 rounded px-2 py-1.5 mt-1 text-sm" placeholder="Ej: Parquet" />
-                        </div>
-                        <div>
-                          <label className="text-xs text-slate-500 uppercase font-medium">Deptos. Edif.</label>
-                          <input type="number" value={target.apartmentsInBuilding} onChange={e => updateTarget({ apartmentsInBuilding: parseFloat(e.target.value) || 0 })} className="w-full bg-slate-100 border-slate-200 rounded px-2 py-1.5 mt-1 text-sm" />
-                        </div>
-                        <div className="col-span-2 md:col-span-4 flex flex-wrap gap-4 items-center mt-2">
-                          {[
-                            { label: 'Apto Crédito', key: 'isCreditEligible' as keyof typeof target },
-                            { label: 'Apto Profesional', key: 'isProfessional' as keyof typeof target },
-                            { label: 'Financiamiento', key: 'hasFinancing' as keyof typeof target },
-                          ].map(item => (
-                            <label key={item.label} className="flex items-center gap-2 cursor-pointer select-none">
-                              <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${target[item.key] ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-300'}`}>
-                                {target[item.key] && <CheckSquare className="w-3 h-3" />}
-                              </div>
-                              <input type="checkbox" className="hidden" checked={!!target[item.key]} onChange={e => updateTarget({ [item.key]: e.target.checked })} />
-                              <span className="text-xs text-slate-700">{item.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  {showOptionalTarget && (<div className="p-4 bg-slate-50 rounded-xl border"><div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4"><div><label className="text-xs text-slate-500 uppercase font-medium">Semicubierta</label><input type="number" value={target.semiCoveredSurface} onChange={e => updateTarget({ semiCoveredSurface: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Toilettes</label><input type="number" value={target.toilettes} onChange={e => updateTarget({ toilettes: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Pisos</label><input type="text" value={target.floorType || ''} onChange={e => updateTarget({ floorType: e.target.value })} className="w-full mt-1 text-sm" placeholder="Ej: Parquet" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Deptos. Edif.</label><input type="number" value={target.apartmentsInBuilding} onChange={e => updateTarget({ apartmentsInBuilding: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div><div className="col-span-full flex flex-wrap gap-4 items-center mt-2">{[{ label: 'Apto Crédito', key: 'isCreditEligible' }, { label: 'Apto Profesional', key: 'isProfessional' }, { label: 'Financiamiento', key: 'hasFinancing' }].map(item => (<label key={item.label} className="flex items-center gap-2 cursor-pointer"><div className={`w-4 h-4 rounded border flex items-center justify-center ${target[item.key as keyof typeof target] ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white'}`}>{target[item.key as keyof typeof target] && <CheckSquare className="w-3 h-3" />}</div><input type="checkbox" className="hidden" checked={!!target[item.key as keyof typeof target]} onChange={e => updateTarget({ [item.key]: e.target.checked })} /><span className="text-xs">{item.label}</span></label>))}</div></div></div>)}
                 </div>
-
-                {/* Right Column - Technical & Photos */}
                 <div className="md:col-span-4 space-y-4">
-                  <div className="grid grid-cols-2 gap-4 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
-                    <div>
-                      <label className="text-xs text-slate-500 uppercase font-medium">Tipo Sup.</label>
-                      <select
-                        value={target.surfaceType}
-                        onChange={e => {
-                          const type = e.target.value as SurfaceType;
-                          updateTarget({ surfaceType: type, homogenizationFactor: DEFAULT_FACTORS[type] });
-                        }}
-                        className="w-full bg-slate-100 border-slate-200 rounded-lg px-2 py-2 mt-1 text-slate-900 focus:ring-brand focus:border-brand text-sm"
-                      >
-                        {SURFACE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-500 uppercase font-medium">Factor</label>
-                      <input
-                        type="number"
-                        step="0.05"
-                        value={target.homogenizationFactor}
-                        onChange={e => updateTarget({ homogenizationFactor: parseFloat(e.target.value) || 0 })}
-                        className="w-full bg-slate-100 border-slate-200 rounded-lg px-2 py-2 mt-1 text-slate-900 focus:ring-brand focus:border-brand text-center"
-                      />
-                    </div>
+                  <div className="grid grid-cols-2 gap-4 bg-slate-50/50 p-4 rounded-xl border">
+                    <div><label className="text-xs text-slate-500 uppercase font-medium">Tipo Sup.</label><select value={target.surfaceType} onChange={e => { const type = e.target.value as SurfaceType; updateTarget({ surfaceType: type, homogenizationFactor: DEFAULT_FACTORS[type] }); }} className="w-full mt-1 text-sm">{SURFACE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                    <div><label className="text-xs text-slate-500 uppercase font-medium">Factor</label><input type="number" step="0.05" value={target.homogenizationFactor} onChange={e => updateTarget({ homogenizationFactor: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-center" /></div>
                   </div>
-
-                  <div>
-                    <ImageUpload
-                      images={target.images || []}
-                      onImagesChange={(imgs) => updateTarget({ images: imgs })}
-                      label="Fotos"
-                      maxImages={4}
-                    />
-                  </div>
+                  <div><ImageUpload images={target.images || []} onImagesChange={(imgs) => updateTarget({ images: imgs })} label="Fotos" maxImages={4} /></div>
                 </div>
               </div>
             </div>
           </Card>
-          <Card className="h-full flex flex-col">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+
+          <Card>
+            <div className="p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/50">
               <h3 className="font-semibold text-slate-800 font-heading">Comparables ({comparables.length})</h3>
-              <button onClick={() => addComparable()} className="flex items-center gap-1 text-sm font-medium text-brand hover:text-brand-dark bg-brand/10 hover:bg-brand/20 px-3 py-1.5 rounded-md transition-colors">
-                <Plus className="w-4 h-4" /> Agregar
-              </button>
+              <button onClick={() => addComparable()} className="flex items-center justify-center gap-1 text-sm font-medium text-brand bg-brand/10 hover:bg-brand/20 px-3 py-1.5 rounded-md w-full sm:w-auto"><Plus className="w-4 h-4" /> Agregar Comparable</button>
             </div>
-
-            <div className="flex-1 overflow-auto bg-white rounded-lg border border-slate-200 shadow-sm">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs font-semibold text-slate-500 uppercase bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
-                  <tr>
-                    <th className="px-6 py-4 min-w-[220px]">Dirección</th>
-                    <th className="px-4 py-4 text-right w-36">Precio (USD)</th>
-                    <th className="px-4 py-4 text-right w-28">Sup. Cub (m²)</th>
-                    <th className="px-4 py-4 text-right w-28">Sup. Desc (m²)</th>
-                    <th className="px-4 py-4 w-48">Tipo</th>
-                    <th className="px-4 py-4 text-center w-24">Factor</th>
-                    <th className="px-4 py-4 text-right w-32">$/m² H</th>
-                    <th className="px-4 py-4 text-center w-24">Días</th>
-                    <th className="px-2 py-4 w-10"></th>
-                    <th className="px-2 py-4 w-10"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {processedComparables.map((comp) => (
-                    <tr key={comp.id} className={cn(
-                      "group transition-colors hover:bg-slate-50/80",
-                      comp.daysOnMarket < 30 ? "bg-emerald-50/20" : "",
-                      comp.daysOnMarket > 120 ? "bg-rose-50/20" : ""
-                    )}>
-                      <td className="px-6 py-3">
-                        {isLoaded ? (
-                          <AddressAutocomplete
-                            value={comp.address}
-                            onChange={(val, loc) => updateComparable(comp.id, { address: val, location: loc })}
-                            className="bg-transparent border-none p-0 w-full focus:ring-0 font-medium text-slate-700 placeholder:text-slate-300"
-                            placeholder="Dirección..."
-                          />
-                        ) : (
-                          <input
-                            type="text"
-                            value={comp.address}
-                            onChange={e => updateComparable(comp.id, { address: e.target.value })}
-                            className="bg-transparent border-none p-0 w-full focus:ring-0 font-medium text-slate-700 placeholder:text-slate-300"
-                            placeholder="Dirección..."
-                          />
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <input
-                          type="number"
-                          value={comp.price}
-                          onChange={e => updateComparable(comp.id, { price: parseFloat(e.target.value) || 0 })}
-                          className="bg-transparent border-none p-0 w-full text-right text-slate-700 font-mono [&::-webkit-inner-spin-button]:appearance-none focus:ring-0"
-                        />
-                      </td>
-                      <td className="px-4 py-3">
-                        <input
-                          type="number"
-                          value={comp.coveredSurface}
-                          onChange={e => updateComparable(comp.id, { coveredSurface: parseFloat(e.target.value) || 0 })}
-                          className="bg-transparent border-none p-0 w-full text-right text-slate-600 [&::-webkit-inner-spin-button]:appearance-none focus:ring-0"
-                        />
-                      </td>
-                      <td className="px-4 py-3">
-                        <input
-                          type="number"
-                          value={comp.uncoveredSurface}
-                          onChange={e => updateComparable(comp.id, { uncoveredSurface: parseFloat(e.target.value) || 0 })}
-                          className="bg-transparent border-none p-0 w-full text-right text-slate-600 [&::-webkit-inner-spin-button]:appearance-none focus:ring-0"
-                        />
-                      </td>
-                      <td className="px-4 py-3">
-                        <select
-                          value={comp.surfaceType}
-                          onChange={e => {
-                            const type = e.target.value as SurfaceType;
-                            updateComparable(comp.id, { surfaceType: type, homogenizationFactor: DEFAULT_FACTORS[type] });
-                          }}
-                          className="bg-transparent border-none p-0 w-full text-slate-600 text-xs cursor-pointer focus:ring-0"
-                        >
-                          {SURFACE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <input
-                          type="number"
-                          step="0.05"
-                          value={comp.homogenizationFactor}
-                          onChange={e => updateComparable(comp.id, { homogenizationFactor: parseFloat(e.target.value) || 0 })}
-                          className="bg-slate-50 border border-slate-200 rounded px-1 py-1 w-16 text-center text-xs font-semibold text-slate-600 focus:ring-2 focus:ring-brand/10 focus:border-brand [&::-webkit-inner-spin-button]:appearance-none"
-                        />
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className="font-bold text-slate-700 text-xs">
-                          ${formatNumber(comp.hPrice || 0)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <input
-                          type="number"
-                          value={comp.daysOnMarket}
-                          onChange={e => updateComparable(comp.id, { daysOnMarket: parseInt(e.target.value) || 0 })}
-                          className={cn(
-                            "bg-transparent border-none p-0 w-full text-center focus:ring-0 font-medium [&::-webkit-inner-spin-button]:appearance-none",
-                            comp.daysOnMarket < 30 ? "text-emerald-600" : "text-slate-600"
-                          )}
-                        />
-                      </td>
-                      <td className="px-2 py-3 text-center">
-                        <button onClick={() => setEditingCompId(comp.id)} className="text-slate-300 hover:text-brand p-1.5 rounded transition-colors" title="Editar Detalles">
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                      </td>
-                      <td className="px-2 py-3 text-center">
-                        <button onClick={() => deleteComparable(comp.id)} className="text-slate-300 hover:text-rose-500 p-1.5 rounded transition-colors opacity-0 group-hover:opacity-100">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="md:hidden">
+              {processedComparables.length > 0 ? (processedComparables.map(comp => (<div key={comp.id} className="border-b p-4 space-y-3"><div className="flex justify-between items-start"><input type="text" value={comp.address} onChange={e => updateComparable(comp.id, { address: e.target.value })} className="bg-transparent font-semibold text-slate-800 w-full p-0 border-0 focus:ring-0" placeholder="Dirección..." /><button onClick={() => deleteComparable(comp.id)} className="p-1.5 text-slate-400 hover:text-rose-500 rounded-md"><Trash2 className="w-4 h-4"/></button></div><div className="grid grid-cols-2 gap-4"><div><label className="text-xs text-slate-500">Precio (USD)</label><input type="number" value={comp.price} onChange={e => updateComparable(comp.id, { price: parseFloat(e.target.value) || 0 })} className="w-full p-1 rounded-md border-slate-200" /></div><div><label className="text-xs text-slate-500">Sup. Cubierta</label><input type="number" value={comp.coveredSurface} onChange={e => updateComparable(comp.id, { coveredSurface: parseFloat(e.target.value) || 0 })} className="w-full p-1 rounded-md border-slate-200" /></div></div><AnimatePresence>{expandedMobileCards.includes(comp.id) && (<motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-3 overflow-hidden"><div className="grid grid-cols-2 gap-4 pt-2"><div><label className="text-xs text-slate-500">Sup. Descub.</label><input type="number" value={comp.uncoveredSurface} onChange={e => updateComparable(comp.id, { uncoveredSurface: parseFloat(e.target.value) || 0 })} className="w-full p-1 rounded-md border-slate-200 text-sm" /></div><div><label className="text-xs text-slate-500">Factor</label><input type="number" value={comp.homogenizationFactor} onChange={e => updateComparable(comp.id, { homogenizationFactor: parseFloat(e.target.value) || 0 })} className="w-full p-1 rounded-md border-slate-200 text-sm" /></div></div></motion.div>)}</AnimatePresence><button onClick={() => toggleMobileCard(comp.id)} className="text-xs text-brand font-medium flex items-center gap-1">{expandedMobileCards.includes(comp.id) ? 'Menos' : 'Más'} Opciones<ChevronDown className={`w-3 h-3 transition-transform ${expandedMobileCards.includes(comp.id) ? 'rotate-180' : ''}`} /></button></div>))) : (<div className="p-8 text-center text-slate-400 text-sm">Agrega tu primer comparable.</div>)}
             </div>
-
-
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm text-left"><thead className="text-xs font-semibold text-slate-500 uppercase bg-slate-50/50"><tr><th className="px-6 py-4 min-w-[220px]">Dirección</th><th className="px-4 py-4 text-right w-36">Precio (USD)</th><th className="px-4 py-4 text-right w-28">Sup. Cub (m²)</th><th className="px-4 py-4 text-right w-28">Sup. Desc (m²)</th><th className="px-4 py-4 text-center w-24">Factor</th><th className="px-4 py-4 text-right w-32">$/m² H</th><th className="px-2 py-4 w-10" /></tr></thead><tbody className="divide-y divide-slate-100">{processedComparables.map((comp) => (<tr key={comp.id} className="group hover:bg-slate-50/80"><td className="px-6 py-3"><input type="text" value={comp.address} onChange={e => updateComparable(comp.id, { address: e.target.value })} className="bg-transparent p-0 w-full focus:ring-0 font-medium" /></td><td className="px-4 py-3"><input type="number" value={comp.price} onChange={e => updateComparable(comp.id, { price: parseFloat(e.target.value) || 0 })} className="bg-transparent p-0 w-full text-right" /></td><td className="px-4 py-3"><input type="number" value={comp.coveredSurface} onChange={e => updateComparable(comp.id, { coveredSurface: parseFloat(e.target.value) || 0 })} className="bg-transparent p-0 w-full text-right" /></td><td className="px-4 py-3"><input type="number" value={comp.uncoveredSurface} onChange={e => updateComparable(comp.id, { uncoveredSurface: parseFloat(e.target.value) || 0 })} className="bg-transparent p-0 w-full text-right" /></td><td className="px-4 py-3 text-center"><input type="number" step="0.05" value={comp.homogenizationFactor} onChange={e => updateComparable(comp.id, { homogenizationFactor: parseFloat(e.target.value) || 0 })} className="bg-slate-50 border rounded px-1 py-1 w-16 text-center text-xs" /></td><td className="px-4 py-3 text-right font-bold text-xs">${formatNumber(comp.hPrice || 0)}</td><td className="px-2 py-3 text-center"><button onClick={() => deleteComparable(comp.id)} className="text-slate-300 hover:text-rose-500 p-1.5 rounded opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button></td></tr>))}</tbody></table>
+            </div>
           </Card>
 
-
-          {/* Ubicación y Mapa Section */}
           <Card className="bg-white border-brand/10 shadow-lg shadow-brand/5 overflow-hidden">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-2 text-brand">
-                <MapPin className="w-5 h-5" />
-                <h2 className="font-bold font-heading uppercase tracking-wider text-sm">Ubicación y Mapa</h2>
-              </div>
-              <button
-                onClick={handleUpdateMap}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-all active:scale-95"
-              >
-                <MapPin className="w-4 h-4" />
-                Generar / Actualizar Mapa
-              </button>
-            </div>
-            <div className="p-6">
-              {mapSnapshot ? (
-                <GoogleMapPreview
-                  target={mapSnapshot.target}
-                  comparables={mapSnapshot.comparables}
-                  onMapImageUpdate={(url) => updateTarget({ mapImage: url })}
-                  isLoaded={isLoaded}
-                />
-              ) : (
-                <div className="h-[400px] w-full bg-slate-100 rounded-lg border border-slate-200 flex flex-col items-center justify-center text-slate-400 gap-4">
-                  <MapPin className="w-12 h-12 opacity-20" />
-                  <div className="text-center px-4">
-                    <p className="font-medium text-slate-600 mb-1">Mapa no generado</p>
-                    <p className="text-sm">Configura la propiedad y los comparables, luego presiona "Generar / Actualizar Mapa" arriba.</p>
-                  </div>
-                </div>
-              )}
-            </div>
+            <div className="p-4 border-b flex items-center justify-between"><h2 className="font-bold font-heading uppercase tracking-wider text-sm text-brand flex items-center gap-2"><MapPin className="w-5 h-5" />Ubicación y Mapa</h2><button onClick={handleUpdateMap} className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg">Generar / Actualizar Mapa</button></div>
+            <div className="p-6">{mapSnapshot ? <GoogleMapPreview target={mapSnapshot.target} comparables={mapSnapshot.comparables} onMapImageUpdate={(url) => updateTarget({ mapImage: url })} isLoaded={isLoaded} /> : <div className="h-[400px] w-full bg-slate-100 rounded-lg flex flex-col items-center justify-center text-slate-400 gap-4"><MapPin className="w-12 h-12 opacity-20" /><p className="font-medium text-slate-600">Mapa no generado</p><p className="text-sm">Presiona "Generar / Actualizar Mapa" arriba.</p></div>}</div>
           </Card>
 
-          {/* Bottom Section: Valuation Results & Configuration */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-
-            {/* Left: Valuation Stats */}
-            <div className="lg:col-span-8">
-              <Card className="bg-white border-slate-200 h-full">
-                <div className="p-6">
-                  <div className="flex items-center gap-2 text-slate-800 mb-6">
-                    <BarChart className="w-5 h-5 text-brand" />
-                    <h2 className="font-bold font-heading uppercase tracking-wider text-sm">Resultados de Valuación</h2>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <StatCard
-                      label="Venta Rápida"
-                      value={formatCurrency(valuation.low)}
-                      subtext={`$${formatNumber(stats.terciles[0])}/m²`}
-                      color="green"
-                    />
-                    <StatCard
-                      label="Precio de Mercado"
-                      value={formatCurrency(valuation.market)}
-                      subtext={`$${formatNumber(stats.avg)}/m²`}
-                      color="blue"
-                    />
-                    <StatCard
-                      label="Precio Alto"
-                      value={formatCurrency(valuation.high)}
-                      subtext={`$${formatNumber(stats.terciles[2])}/m²`}
-                      color="amber"
-                    />
-                  </div>
-
-                  <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-600 leading-relaxed">
-                    <p>Valores aproximados usando el <strong>Método de Comparables</strong>, ajustando precios por superficie homogeneizada.</p>
-                  </div>
-                </div>
-              </Card>
-            </div>
-
-            {/* Right: Configuration */}
-            <div className="lg:col-span-4">
-              <Card className="bg-white border-slate-200 h-full">
-                <div className="p-4 space-y-4">
-                  <div className="flex items-center gap-2 text-slate-800 mb-2">
-                    <AlertCircle className="w-4 h-4 text-brand" />
-                    <h2 className="font-semibold text-xs uppercase tracking-wider">Datos del Reporte</h2>
-                  </div>
-                  <div className="space-y-4">
-                    {/* Select saved agent */}
-                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                      <label className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1.5 block flex items-center justify-between">
-                        <span>Cargar Agente</span>
-                        <User className="w-3 h-3 text-slate-400" />
-                      </label>
-                      <select
-                        onChange={(e) => handleSelectAgent(e.target.value)}
-                        className="w-full text-sm bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700 focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all outline-none cursor-pointer"
-                        value=""
-                      >
-                        <option value="" disabled>Seleccionar...</option>
-                        {loadingAgents ? (
-                          <option disabled>Cargando...</option>
-                        ) : (
-                          agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)
-                        )}
-                      </select>
-                    </div>
-
-                    <div className="space-y-3">
-                      {/* Select saved client */}
-                      <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
-                        <label className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1.5 block flex items-center justify-between">
-                          <span>Cargar Cliente</span>
-                          <Users className="w-3 h-3 text-slate-400" />
-                        </label>
-                        <select
-                          onChange={(e) => handleSelectClient(e.target.value)}
-                          className="w-full text-sm bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700 focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all outline-none cursor-pointer"
-                          value=""
-                        >
-                          <option value="" disabled>Seleccionar...</option>
-                          {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="text-xs text-slate-500 uppercase font-medium">Cliente</label>
-                        <input
-                          type="text"
-                          value={clientName}
-                          onChange={e => setClientName(e.target.value)}
-                          className="w-full bg-slate-100 border-slate-200 rounded-lg px-3 py-2 mt-1 text-slate-800 focus:ring-brand focus:border-brand text-sm"
-                          placeholder="Nombre del Cliente"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-xs text-slate-500 uppercase font-medium">Agente</label>
-                        <input
-                          type="text"
-                          value={brokerName}
-                          onChange={e => setBrokerName(e.target.value)}
-                          className="w-full bg-slate-100 border-slate-200 rounded-lg px-3 py-2 mt-1 text-slate-800 focus:ring-brand focus:border-brand text-sm"
-                          placeholder="Ej: Juan Pérez"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-xs text-slate-500 uppercase font-medium">Matrícula</label>
-                        <input
-                          type="text"
-                          value={matricula}
-                          onChange={e => setMatricula(e.target.value)}
-                          className="w-full bg-slate-100 border-slate-200 rounded-lg px-3 py-2 mt-1 text-slate-800 focus:ring-brand focus:border-brand text-sm"
-                          placeholder="Ej: CUCICBA 1234"
-                        />
-                      </div>
-
-                      <button
-                        onClick={handleSaveAgent}
-                        disabled={isSavingAgent || !brokerName || !matricula}
-                        className="w-full flex items-center justify-center gap-2 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-                      >
-                        {isSavingAgent ? 'Guardando...' : <><Save className="w-3 h-3" /> GUARDAR AGENTE</>}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            </div>
+            <div className="lg:col-span-8"><Card className="h-full"><div className="p-6"><div className="flex items-center gap-2 mb-6"><BarChart className="w-5 h-5 text-brand" /><h2 className="font-bold font-heading uppercase tracking-wider text-sm">Resultados de Valuación</h2></div><div className="grid grid-cols-1 md:grid-cols-3 gap-6"><StatCard label="Venta Rápida" value={formatCurrency(valuation.low)} subtext={`$${formatNumber(stats.terciles[0])}/m²`} color="green" /><StatCard label="Precio de Mercado" value={formatCurrency(valuation.market)} subtext={`$${formatNumber(stats.avg)}/m²`} color="blue" /><StatCard label="Precio Alto" value={formatCurrency(valuation.high)} subtext={`$${formatNumber(stats.terciles[2])}/m²`} color="amber" /></div></div></Card></div>
+            <div className="lg:col-span-4"><Card className="h-full"><div className="p-4 space-y-4"><h2 className="font-semibold text-xs uppercase tracking-wider flex items-center gap-2"><AlertCircle className="w-4 h-4 text-brand" />Datos del Reporte</h2><div className="space-y-4"><div className="bg-slate-50 p-3 rounded-lg border"><label className="text-xs text-slate-500 uppercase font-bold mb-1.5 block">Cargar Agente</label><select onChange={(e) => handleSelectAgent(e.target.value)} className="w-full text-sm" value=""><option value="" disabled>Seleccionar...</option>{loadingAgents ? <option disabled>Cargando...</option> : agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></div><div className="space-y-3"><div className="bg-slate-50 p-3 rounded-lg border"><label className="text-xs text-slate-500 uppercase font-bold mb-1.5 block">Cargar Cliente</label><select onChange={(e) => handleSelectClient(e.target.value)} className="w-full text-sm" value=""><option value="" disabled>Seleccionar...</option>{clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div><div><label className="text-xs text-slate-500 uppercase font-medium">Cliente</label><input type="text" value={clientName} onChange={e => setClientName(e.target.value)} className="w-full mt-1 text-sm" placeholder="Nombre del Cliente" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Agente</label><input type="text" value={brokerName} onChange={e => setBrokerName(e.target.value)} className="w-full mt-1 text-sm" placeholder="Ej: Juan Pérez" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Matrícula</label><input type="text" value={matricula} onChange={e => setMatricula(e.target.value)} className="w-full mt-1 text-sm" placeholder="Ej: CUCICBA 1234" /></div><button onClick={handleSaveAgent} disabled={isSavingAgent || !brokerName || !matricula} className="w-full flex items-center justify-center gap-2 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg disabled:opacity-50 mt-2">{isSavingAgent ? 'Guardando...' : <><Save className="w-3 h-3" /> GUARDAR AGENTE</>}</button></div></div></div></Card></div>
           </div>
         </div>
 
-        {/* Edit Comparable Modal */}
-        {
-          editingCompId && editingComparable && (
-            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-2xl shadow-xl border border-slate-100 max-w-lg w-full p-6 flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
-                <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
-                  <h3 className="text-xl font-bold font-heading text-slate-800">
-                    Editar Comparable
-                  </h3>
-                  <button onClick={() => setEditingCompId(null)} className="text-slate-400 hover:text-slate-600 p-2">
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
+        {editingCompId && editingComparable && (<div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"><div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 flex flex-col max-h-[90vh]"><div className="flex items-center justify-between mb-4 pb-2 border-b"><h3 className="text-xl font-bold font-heading">Editar Comparable</h3><button onClick={() => setEditingCompId(null)} className="p-2"><X className="w-5 h-5" /></button></div><div className="flex-1 overflow-y-auto space-y-6 pr-2"><div className="space-y-4"><h4 className="text-xs font-bold text-brand uppercase">Indispensables</h4><div><label className="text-xs text-slate-500 uppercase font-medium">Dirección</label>{isLoaded ? <AddressAutocomplete value={editingComparable.address} onChange={(val, loc) => updateComparable(editingComparable.id, { address: val, location: loc })} className="w-full mt-1 text-sm" /> : <input type="text" value={editingComparable.address} onChange={e => updateComparable(editingComparable.id, { address: e.target.value })} className="w-full mt-1 text-sm" />}</div><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label className="text-xs text-slate-500 uppercase font-medium">Precio (USD)</label><input type="number" value={editingComparable.price} onChange={e => updateComparable(editingComparable.id, { price: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Días en Mercado</label><input type="number" value={editingComparable.daysOnMarket} onChange={e => updateComparable(editingComparable.id, { daysOnMarket: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label className="text-xs text-slate-500 uppercase font-medium">Cubierta m²</label><input type="number" value={editingComparable.coveredSurface} onChange={e => updateComparable(editingComparable.id, { coveredSurface: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Descubierta m²</label><input type="number" value={editingComparable.uncoveredSurface} onChange={e => updateComparable(editingComparable.id, { uncoveredSurface: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div></div><div className="grid grid-cols-1 sm:grid-cols-3 gap-3"><div><label className="text-xs text-slate-500 uppercase font-medium">Ambientes</label><input type="number" value={editingComparable.rooms} onChange={e => updateComparable(editingComparable.id, { rooms: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-center" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Dormitorios</label><input type="number" value={editingComparable.bedrooms} onChange={e => updateComparable(editingComparable.id, { bedrooms: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-center" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Baños</label><input type="number" value={editingComparable.bathrooms} onChange={e => updateComparable(editingComparable.id, { bathrooms: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-center" /></div></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label className="text-xs text-slate-500 uppercase font-medium">Antigüedad</label><input type="number" value={editingComparable.age} onChange={e => updateComparable(editingComparable.id, { age: parseFloat(e.target.value) || 0 })} className="w-full mt-1" /></div><div className="flex items-center pt-6"><label className="flex items-center gap-2 cursor-pointer"><div className={`w-5 h-5 rounded border flex items-center justify-center ${editingComparable.garage ? 'bg-brand border-brand text-white' : 'bg-slate-50'}`}>{editingComparable.garage && <CheckSquare className="w-4 h-4" />}</div><input type="checkbox" className="hidden" checked={!!editingComparable.garage} onChange={e => updateComparable(editingComparable.id, { garage: e.target.checked })} /><span className="text-sm font-medium">Tiene Cochera</span></label></div></div></div><div className="space-y-4 pt-4 border-t"><ImageUpload images={editingComparable.images || []} onImagesChange={(imgs) => updateComparable(editingComparable.id, { images: imgs })} label="Fotos del Comparable" maxImages={4} /></div><div className="space-y-4 pt-4 border-t"><h4 className="text-xs font-bold text-slate-400 uppercase">Opcionales</h4><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label className="text-xs text-slate-500 uppercase font-medium">Semicubierta</label><input type="number" value={editingComparable.semiCoveredSurface} onChange={e => updateComparable(editingComparable.id, { semiCoveredSurface: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Toilettes</label><input type="number" value={editingComparable.toilettes} onChange={e => updateComparable(editingComparable.id, { toilettes: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div></div><div><label className="text-xs text-slate-500 uppercase font-medium">Pisos</label><input type="text" value={editingComparable.floorType || ''} onChange={e => updateComparable(editingComparable.id, { floorType: e.target.value })} className="w-full mt-1 text-sm" placeholder="Ej: Porcelanato" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Deptos. Edificio</label><input type="number" value={editingComparable.apartmentsInBuilding} onChange={e => updateComparable(editingComparable.id, { apartmentsInBuilding: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div><div className="space-y-2 pt-2">{[{ label: 'Apto Crédito', key: 'isCreditEligible' }, { label: 'Apto Profesional', key: 'isProfessional' }, { label: 'Financiamiento', key: 'hasFinancing' }].map(item => (<label key={item.label} className="flex items-center gap-2 cursor-pointer"><div className={`w-4 h-4 rounded border flex items-center justify-center ${editingComparable[item.key as keyof typeof editingComparable] ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-slate-50'}`}>{editingComparable[item.key as keyof typeof editingComparable] && <CheckSquare className="w-3 h-3" />}</div><input type="checkbox" className="hidden" checked={!!editingComparable[item.key as keyof typeof editingComparable]} onChange={e => updateComparable(editingComparable.id, { [item.key]: e.target.checked })} /><span className="text-xs">{item.label}</span></label>))}</div></div></div><div className="mt-6 pt-4 border-t flex justify-end"><button onClick={() => setEditingCompId(null)} className="px-4 py-2 bg-brand text-white rounded-lg text-sm">Listo</button></div></div></div>)}
 
-                <div className="flex-1 overflow-y-auto space-y-6 pr-2">
-
-                  {/* Indispensables */}
-                  <div className="space-y-4">
-                    <h4 className="text-xs font-bold text-brand uppercase tracking-wider">Indispensables</h4>
-
-                    <div>
-                      <label className="text-xs text-slate-500 uppercase font-medium">Dirección</label>
-                      {isLoaded ? (
-                        <AddressAutocomplete
-                          value={editingComparable.address}
-                          onChange={(val, loc) => updateComparable(editingComparable.id, { address: val, location: loc })}
-                          className="w-full bg-slate-100 border-slate-200 rounded px-3 py-2 mt-1 text-sm font-medium"
-                        />
-                      ) : (
-                        <input
-                          type="text"
-                          value={editingComparable.address}
-                          onChange={e => updateComparable(editingComparable.id, { address: e.target.value })}
-                          className="w-full bg-slate-100 border-slate-200 rounded px-3 py-2 mt-1 text-sm font-medium"
-                        />
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs text-slate-500 uppercase font-medium">Precio (USD)</label>
-                        <input
-                          type="number"
-                          value={editingComparable.price}
-                          onChange={e => updateComparable(editingComparable.id, { price: parseFloat(e.target.value) || 0 })}
-                          className="w-full bg-slate-100 border-slate-200 rounded px-3 py-2 mt-1 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-slate-500 uppercase font-medium">Días en Mercado</label>
-                        <input
-                          type="number"
-                          value={editingComparable.daysOnMarket}
-                          onChange={e => updateComparable(editingComparable.id, { daysOnMarket: parseFloat(e.target.value) || 0 })}
-                          className="w-full bg-slate-100 border-slate-200 rounded px-3 py-2 mt-1 text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs text-slate-500 uppercase font-medium">Cubierta m²</label>
-                        <input
-                          type="number"
-                          value={editingComparable.coveredSurface}
-                          onChange={e => updateComparable(editingComparable.id, { coveredSurface: parseFloat(e.target.value) || 0 })}
-                          className="w-full bg-slate-100 border-slate-200 rounded px-3 py-2 mt-1 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-slate-500 uppercase font-medium">Descubierta m²</label>
-                        <input
-                          type="number"
-                          value={editingComparable.uncoveredSurface}
-                          onChange={e => updateComparable(editingComparable.id, { uncoveredSurface: parseFloat(e.target.value) || 0 })}
-                          className="w-full bg-slate-100 border-slate-200 rounded px-3 py-2 mt-1 text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <label className="text-xs text-slate-500 uppercase font-medium">Ambientes</label>
-                        <input type="number" value={editingComparable.rooms} onChange={e => updateComparable(editingComparable.id, { rooms: parseFloat(e.target.value) || 0 })} className="w-full bg-slate-100 border-slate-200 rounded px-2 py-2 mt-1 text-center" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-slate-500 uppercase font-medium">Dormitorios</label>
-                        <input type="number" value={editingComparable.bedrooms} onChange={e => updateComparable(editingComparable.id, { bedrooms: parseFloat(e.target.value) || 0 })} className="w-full bg-slate-100 border-slate-200 rounded px-2 py-2 mt-1 text-center" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-slate-500 uppercase font-medium">Baños</label>
-                        <input type="number" value={editingComparable.bathrooms} onChange={e => updateComparable(editingComparable.id, { bathrooms: parseFloat(e.target.value) || 0 })} className="w-full bg-slate-100 border-slate-200 rounded px-2 py-2 mt-1 text-center" />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs text-slate-500 uppercase font-medium">Antigüedad</label>
-                        <input type="number" value={editingComparable.age} onChange={e => updateComparable(editingComparable.id, { age: parseFloat(e.target.value) || 0 })} className="w-full bg-slate-100 border-slate-200 rounded px-3 py-2 mt-1" />
-                      </div>
-                      <div className="flex items-center pt-6">
-                        <label className="flex items-center gap-2 cursor-pointer select-none">
-                          <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${editingComparable.garage ? 'bg-brand border-brand text-white' : 'bg-slate-50 border-slate-300'}`}>
-                            {editingComparable.garage && <CheckSquare className="w-4 h-4" />}
-                          </div>
-                          <input type="checkbox" className="hidden" checked={!!editingComparable.garage} onChange={e => updateComparable(editingComparable.id, { garage: e.target.checked })} />
-                          <span className="text-sm text-slate-700 font-medium">Tiene Cochera</span>
-                        </label>
-                      </div>
-                    </div>
-
-                  </div>
-
-                  {/* Images */}
-                  <div className="space-y-4 pt-4 border-t border-slate-100">
-                    <ImageUpload
-                      images={editingComparable.images || []}
-                      onImagesChange={(imgs) => updateComparable(editingComparable.id, { images: imgs })}
-                      label="Fotos del Comparable"
-                      maxImages={4}
-                    />
-                  </div>
-
-                  {/* Optionals */}
-                  <div className="space-y-4 pt-4 border-t border-slate-100">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Opcionales</h4>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs text-slate-500 uppercase font-medium">Semicubierta</label>
-                        <input type="number" value={editingComparable.semiCoveredSurface} onChange={e => updateComparable(editingComparable.id, { semiCoveredSurface: parseFloat(e.target.value) || 0 })} className="w-full bg-slate-100 border-slate-200 rounded px-3 py-2 mt-1 text-sm" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-slate-500 uppercase font-medium">Toilettes</label>
-                        <input type="number" value={editingComparable.toilettes} onChange={e => updateComparable(editingComparable.id, { toilettes: parseFloat(e.target.value) || 0 })} className="w-full bg-slate-100 border-slate-200 rounded px-3 py-2 mt-1 text-sm" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-500 uppercase font-medium">Pisos</label>
-                      <input type="text" value={editingComparable.floorType || ''} onChange={e => updateComparable(editingComparable.id, { floorType: e.target.value })} className="w-full bg-slate-100 border-slate-200 rounded px-3 py-2 mt-1 text-sm" placeholder="Ej: Porcelanato" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-500 uppercase font-medium">Deptos. Edificio</label>
-                      <input type="number" value={editingComparable.apartmentsInBuilding} onChange={e => updateComparable(editingComparable.id, { apartmentsInBuilding: parseFloat(e.target.value) || 0 })} className="w-full bg-slate-100 border-slate-200 rounded px-3 py-2 mt-1 text-sm" />
-                    </div>
-                    <div className="space-y-2 pt-2">
-                      {[
-                        { label: 'Apto Crédito', key: 'isCreditEligible' as keyof typeof editingComparable },
-                        { label: 'Apto Profesional', key: 'isProfessional' as keyof typeof editingComparable },
-                        { label: 'Financiamiento', key: 'hasFinancing' as keyof typeof editingComparable },
-                      ].map(item => (
-                        <label key={item.label} className="flex items-center gap-2 cursor-pointer select-none">
-                          <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${editingComparable[item.key] ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-slate-50 border-slate-300'}`}>
-                            {editingComparable[item.key] && <CheckSquare className="w-3 h-3" />}
-                          </div>
-                          <input type="checkbox" className="hidden" checked={!!editingComparable[item.key]} onChange={e => updateComparable(editingComparable.id, { [item.key]: e.target.checked })} />
-                          <span className="text-xs text-slate-700">{item.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-slate-100 flex justify-end">
-                  <button onClick={() => setEditingCompId(null)} className="px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors font-medium text-sm">
-                    Listo
-                  </button>
-                </div>
-
-              </div>
-            </div >
-          )
-        }
-
-
-        <div className="mt-8">
-          <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2 font-heading">
-            <FileText className="w-5 h-5 text-brand" />
-            Vista Previa del Reporte
-          </h3>
-          <div className="bg-slate-200/50 rounded-xl p-8 overflow-auto flex justify-center border border-slate-200 shadow-inner">
-            <div className="shadow-2xl" style={{ zoom: '0.6' }}>
-              <ReportView
-                data={{
-                  target: target,
-                  brokerName: brokerName || '',
-                  matricula: matricula || '',
-                  clientName: clientName || '',
-                  ...valuation
-                }}
-                properties={processedComparables}
-                valuation={valuation}
-                stats={stats}
-                theme={pdfTheme}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Floating Actions */}
         <div className="fixed bottom-8 right-8 flex flex-col gap-3 z-50">
-          <button
-            onClick={handleSaveValuation}
-            className="flex items-center justify-center w-12 h-12 bg-white text-slate-600 hover:text-brand hover:bg-slate-50 rounded-full shadow-lg border border-slate-200 transition-all hover:scale-105"
-            title="Guardar Valuación"
-          >
-            <Save className="w-5 h-5" />
-          </button>
-
-          <PDFGenerator
-            target={target}
-            comparables={processedComparables}
-            valuation={valuation}
-            stats={stats}
-            brokerName={brokerName}
-            matricula={matricula}
-            clientName={clientName}
-            theme={pdfTheme}
-            displayMode="icon"
-            className="flex items-center justify-center w-12 h-12 bg-brand text-white hover:bg-brand-dark rounded-full shadow-lg shadow-brand/20 transition-all hover:scale-105 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          />
+          <button onClick={() => handleSaveValuation({ target, comparables, clientName, currentValuationId }, onSaveSuccess)} className="flex items-center justify-center w-12 h-12 bg-white rounded-full shadow-lg border" title="Guardar Valuación"><Save className="w-5 h-5" /></button>
+          <PDFGenerator target={target} comparables={processedComparables} valuation={valuation} stats={stats} brokerName={brokerName} matricula={matricula} clientName={clientName} theme={pdfTheme} displayMode="icon" className="flex items-center justify-center w-12 h-12 bg-brand text-white rounded-full shadow-lg" />
         </div>
-      </main >
-    </div >
+      </main>
+    </div>
   );
 }
 export default Dashboard;

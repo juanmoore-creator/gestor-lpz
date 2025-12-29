@@ -77,6 +77,33 @@ const server = createServer(async (req, res) => {
             res.statusCode = 500;
             res.end(JSON.stringify({ error: e.message }));
         }
+    } else if (req.url === '/api/rename-file') {
+        console.log("Request received for /api/rename-file");
+
+        // Mocking Vercel-like Response object
+        const mockRes = {
+            setHeader: (k, v) => res.setHeader(k, v),
+            status: (code) => {
+                res.statusCode = code;
+                return mockRes;
+            },
+            json: (data) => {
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify(data));
+                return mockRes;
+            },
+            end: (data) => res.end(data || '')
+        };
+
+        try {
+            // Import the handler dynamically
+            const { default: renameHandler } = await import('./api/rename-file.js');
+            await renameHandler(req, mockRes);
+        } catch (e) {
+            console.error("Handler error:", e);
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: e.message }));
+        }
     } else {
         res.statusCode = 404;
         res.end('Not Found: ' + req.url);

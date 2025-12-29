@@ -11,14 +11,18 @@ import {
     User,
     Loader2,
     ExternalLink,
-    Download
+    Download,
+    Pencil,
+    Check,
+    X
 } from 'lucide-react';
-import { collection, addDoc, getDocs, query, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, Timestamp, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 
 interface FileItem {
     id: string;
+    driveFileId?: string;
     name: string;
     size: string;
     type: string;
@@ -40,6 +44,12 @@ export default function FilesPage() {
     const [isUploading, setIsUploading] = useState(false);
     const [files, setFiles] = useState<FileItem[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Rename state
+    const [editingFileId, setEditingFileId] = useState<string | null>(null);
+    const [editingName, setEditingName] = useState('');
+    const [isRenaming, setIsRenaming] = useState(false);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const fetchFiles = async () => {
@@ -75,6 +85,7 @@ export default function FilesPage() {
 
                 return {
                     id: doc.id,
+                    driveFileId: data.driveFileId,
                     name: data.name,
                     size: sizeStr || 'Unknown',
                     type: simpleType,
@@ -151,6 +162,67 @@ export default function FilesPage() {
             }
         }
     };
+
+    const handleStartRename = (file: FileItem) => {
+        setEditingFileId(file.id);
+        // Remove extension for editing convenience if needed, 
+        // but for now let's edit the full name to be safe with Drive
+        setEditingName(file.name);
+    };
+
+    const handleCancelRename = () => {
+        setEditingFileId(null);
+        setEditingName('');
+    };
+
+    const handleSaveRename = async () => {
+        if (!editingFileId || !user || !editingName.trim()) return;
+
+        const fileToUpdate = files.find(f => f.id === editingFileId);
+        if (!fileToUpdate) return;
+
+        setIsRenaming(true);
+
+        try {
+            // 1. Update in Drive if we have a driveFileId
+            if (fileToUpdate.driveFileId) {
+                const formData = new FormData();
+                formData.append('fileId', fileToUpdate.driveFileId);
+                formData.append('newName', editingName.trim());
+
+                const response = await fetch('/api/rename-file', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to rename in Drive');
+                }
+            }
+
+            // 2. Update in Firestore
+            const fileRef = doc(db, `users/${user.uid}/files`, editingFileId);
+            await updateDoc(fileRef, {
+                name: editingName.trim()
+            });
+
+            // 3. Update local state
+            setFiles(prev => prev.map(f =>
+                f.id === editingFileId
+                    ? { ...f, name: editingName.trim() }
+                    : f
+            ));
+
+            handleCancelRename();
+        } catch (error) {
+            console.error('Rename error:', error);
+            alert('Error al renombrar el archivo: ' + (error as Error).message);
+        } finally {
+            setIsRenaming(false);
+        }
+    };
+
 
     const getFileIcon = (type: string) => {
         switch (type) {
@@ -268,7 +340,59 @@ export default function FilesPage() {
                                                 {getFileIcon(file.type)}
                                             </div>
                                             <div>
-                                                <p className="font-medium text-gray-900 truncate max-w-[200px]" title={file.name}>{file.name}</p>
+                                                {editingFileId === file.id ? (
+                                                    <div className="flex items-center space-x-2">
+                                                        <input
+                                                            type="text"
+                                                            value={editingName}
+                                                            onChange={(e) => setEditingName(e.target.value)}
+                                                            className="text-sm border border-gray-300 rounded px-2 py-1 w-48 focus:outline-none focus:border-purple-500"
+                                                            autoFocus
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') handleSaveRename();
+                                                                if (e.key === 'Escape') handleCancelRename();
+                                                            }}
+                                                            disabled={isRenaming}
+                                                        />
+                                                        <button
+                                                            onClick={handleSaveRename}
+                                                            disabled={isRenaming}
+                                                            className="text-green-600 hover:text-green-700 disabled:opacity-50"
+                                                        >
+                                                            {isRenaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                                                        </button>
+                                                        <button
+                                                            onClick={handleCancelRename}
+                                                            disabled={isRenaming}
+                                                            className="text-red-500 hover:text-red-600 disabled:opacity-50"
+                                                        >
+                                                            <X className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center group/name">
+                                                        {file.webViewLink ? (
+                                                            <a
+                                                                href={file.webViewLink}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="font-medium text-gray-900 truncate max-w-[200px] hover:text-blue-600 hover:underline cursor-pointer block"
+                                                                title={file.name}
+                                                            >
+                                                                {file.name}
+                                                            </a>
+                                                        ) : (
+                                                            <p className="font-medium text-gray-900 truncate max-w-[200px]" title={file.name}>{file.name}</p>
+                                                        )}
+                                                        <button
+                                                            onClick={() => handleStartRename(file)}
+                                                            className="ml-2 text-gray-400 hover:text-gray-600 opacity-0 group-hover/name:opacity-100 transition-opacity"
+                                                            title="Renombrar"
+                                                        >
+                                                            <Pencil className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
+                                                )}
                                                 <p className="text-xs text-gray-500">{file.size}</p>
                                             </div>
                                         </div>

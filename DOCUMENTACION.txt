@@ -1,0 +1,115 @@
+================================
+DOCUMENTACIÓN: Proyecto Tasaccion
+================================
+
+Este documento proporciona una visión general del proyecto "Tasaccion", su arquitectura, stack tecnológico y cómo ejecutarlo.
+
+---------------------------------
+1. RESUMEN DEL PROYECTO
+---------------------------------
+
+Tasaccion es una aplicación web (SPA - Single Page Application) diseñada para tasadores inmobiliarios. Permite a los usuarios crear, gestionar y guardar tasaciones detalladas de propiedades. Las tasaciones se basan en el método de comparables, permitiendo al usuario introducir una propiedad objetivo y varias propiedades comparables para calcular un valor de mercado estimado. La aplicación también genera reportes en PDF y permite gestionar una cartera de clientes.
+
+---------------------------------
+2. STACK TECNOLÓGICO
+---------------------------------
+
+El proyecto utiliza un stack moderno basado en JavaScript y tecnologías serverless.
+
+- **Frontend:**
+  - **Framework:** React 19 (con Hooks)
+  - **Lenguaje:** TypeScript
+  - **Build Tool:** Vite
+  - **Estilos:** Tailwind CSS
+  - **Enrutamiento:** React Router
+
+- **Backend (Serverless):**
+  - **Plataforma:** Desplegado en Vercel.
+  - **Base de Datos:** Firestore (de Firebase) para almacenar todos los datos de usuarios, tasaciones, clientes, etc.
+  - **Funciones Serverless:** Node.js (ubicadas en el directorio `/api`) para tareas específicas como la autenticación con servicios de terceros.
+
+- **Servicios Externos:**
+  - **Autenticación:** Firebase Authentication.
+  - **Imágenes:** ImageKit para el almacenamiento y la optimización de imágenes de propiedades.
+  - **Mapas y Autocompletado:** Google Maps Platform (API de Places y Maps).
+
+---------------------------------
+3. ESTRUCTURA DEL PROYECTO
+---------------------------------
+
+La estructura de carpetas está organizada para promover la modularidad y escalabilidad.
+
+- **/api:** Contiene el código de las funciones serverless (backend).
+  - `imagekit-auth.js`: Autentica al cliente contra ImageKit para permitir subidas directas.
+  - ... (otras funciones)
+
+- **/src:** Contiene todo el código fuente del frontend.
+  - **/components:** Componentes de React reutilizables (UI, reportes, etc.).
+  - **/context:** Contextos de React para estados globales (ej. `AuthContext`, `ClientsContext`).
+  - **/hooks:** Hooks personalizados que encapsulan la lógica de negocio. Este es el núcleo de la nueva arquitectura.
+    - `useActiveValuation.ts`: Gestiona la tasación que se está editando.
+    - `useSavedValuations.ts`: Gestiona la lista de tasaciones guardadas.
+    - `useUserProfile.ts`: Gestiona los datos del perfil del usuario (agente).
+    - `useUI.ts`: Gestiona estados globales de la UI (ej. modales).
+    - `useGoogleSheetImport.ts`: Lógica para importar datos desde Google Sheets.
+  - **/layouts:** Componentes de layout principales (ej. `PrivateLayout`).
+  - **/lib:** Configuración de servicios externos (Firebase, ImageKit).
+  - **/pages:** Componentes que representan las páginas completas de la aplicación (ej. `Dashboard`, `ClientsManager`).
+  - **/types:** Definiciones de tipos de TypeScript.
+  - **/utils:** Funciones de utilidad (ej. formateo de moneda).
+
+---------------------------------
+4. ARQUITECTURA Y LÓGICA
+---------------------------------
+
+La aplicación ha sido refactorizada para usar un sistema de **hooks personalizados** en lugar de un único Contexto de React monolítico (`ValuationContext`). Esto mejora significativamente el rendimiento, la mantenibilidad y la escalabilidad, ya que los componentes ahora solo dependen de la lógica y los datos específicos que necesitan.
+
+El flujo de datos es unidireccional y está gestionado por estos hooks, que se comunican directamente con Firebase para la persistencia de datos. Los componentes de la UI son en su mayoría "tontos" y reciben los datos y las funciones que necesitan de los hooks en las páginas contenedoras.
+
+**Problemas de Escalabilidad:**
+- **RESUELTO:** Se eliminó el "God Object" `ValuationContext`, que causaba re-renderizados masivos.
+- **PENDIENTE:** La aplicación todavía carga la lista completa de clientes y tasaciones al inicio. El siguiente paso crítico es implementar **paginación** en los hooks `useSavedValuations` y `ClientsContext` para cargar los datos por lotes.
+
+---------------------------------
+5. CÓMO EJECUTAR EL PROYECTO
+---------------------------------
+
+**Requisitos:**
+- Node.js (versión 18 o superior)
+- Un archivo `.env` en la raíz del proyecto con las claves de API necesarias (ej. `VITE_GOOGLE_MAPS_API_KEY`).
+
+**1. Instalación de dependencias:**
+   Abre una terminal en la raíz del proyecto y ejecuta:
+   ```
+   npm install
+   ```
+
+**2. Ejecutar en modo de desarrollo:**
+   Para iniciar el servidor de desarrollo local (generalmente en `http://localhost:5173`):
+   ```
+   npm run dev
+   ```
+
+**3. Construir para producción:**
+   Para compilar y optimizar la aplicación para producción (el resultado se genera en la carpeta `/dist`):
+   ```
+   npm run build
+   ```
+
+**4. Linting:**
+   Para verificar la calidad del código y buscar errores de estilo:
+   ```
+   npm run lint
+   ```
+
+**5. Vista previa de la build de producción:**
+   Para probar la versión de producción de forma local:
+   ```
+   npm run preview
+   ```
+
+---------------------------------
+6. DESPLIEGUE
+---------------------------------
+
+El proyecto está configurado para un despliegue continuo en **Vercel**. El archivo `vercel.json` en la raíz contiene la configuración de despliegue. Cada vez que se hace un push a la rama principal, Vercel debería construir y desplegar automáticamente la nueva versión.

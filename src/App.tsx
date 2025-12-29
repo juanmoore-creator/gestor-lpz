@@ -1,7 +1,6 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
-import { ValuationProvider } from './context/ValuationContext';
 import { ClientsProvider } from './context/ClientsContext';
 
 import ProtectedRoute from './components/ProtectedRoute';
@@ -26,35 +25,33 @@ function App() {
   return (
     <AuthProvider>
       <ClientsProvider>
-        <ValuationProvider>
-          <BrowserRouter>
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/" element={<Navigate to="/app" replace />} />
-                <Route path="/login" element={<LoginPage />} />
+        <BrowserRouter>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/" element={<Navigate to="/app" replace />} />
+              <Route path="/login" element={<LoginPage />} />
 
-                {/* Rutas Privadas */}
-                <Route
-                  path="/app"
-                  element={
-                    <ProtectedRoute>
-                      <PrivateLayout />
-                    </ProtectedRoute>
-                  }
-                >
-                  <Route index element={<ControlPanel />} />
-                  <Route path="tasaciones" element={<SavedValuations />} />
-                  <Route path="tasaciones/editar" element={<Dashboard />} />
-                  <Route path="clients" element={<ClientsManager />} />
-                  <Route path="archivos" element={<FilesPage />} />
-                  <Route path="calendar" element={<CalendarPage />} />
-                </Route>
+              {/* Rutas Privadas */}
+              <Route
+                path="/app"
+                element={
+                  <ProtectedRoute>
+                    <PrivateLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<ControlPanel />} />
+                <Route path="tasaciones" element={<SavedValuations />} />
+                <Route path="tasaciones/editar" element={<Dashboard />} />
+                <Route path="clients" element={<ClientsManager />} />
+                <Route path="archivos" element={<FilesPage />} />
+                <Route path="calendar" element={<CalendarPage />} />
+              </Route>
 
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </Suspense>
-          </BrowserRouter>
-        </ValuationProvider>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
       </ClientsProvider>
     </AuthProvider>
   );
