@@ -1,13 +1,12 @@
 import { useState, useMemo } from 'react';
 import {
-  Upload, Home, Trash2, AlertCircle, FileSpreadsheet, FileText, X,
-  Pencil, ChevronDown, ChevronUp, CheckSquare, BarChart, Sparkles, MapPin, Plus, Save, User, Users
+  Upload, Home, Trash2, AlertCircle, FileSpreadsheet, X,
+  ChevronDown, ChevronUp, CheckSquare, BarChart, Sparkles, MapPin, Plus, Save
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '../components/ui/Card';
 import { Card } from '../components/ui/Card';
 import { StatCard } from '../components/ui/StatCard';
-import ReportView from '../components/ReportView';
+
 import { useActiveValuation } from '../hooks/useActiveValuation';
 import { useSavedValuations } from '../hooks/useSavedValuations';
 import { useUserProfile } from '../hooks/useUserProfile';
@@ -28,7 +27,7 @@ import type { SurfaceType } from '../types/index';
 const libraries: Libraries = ["places"];
 
 function Dashboard() {
-  const { isLoaded, loadError } = useJsApiLoader({
+  const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
     libraries
@@ -40,7 +39,7 @@ function Dashboard() {
     processedComparables, stats, valuation, targetHomogenizedSurface,
     clientName, setClientName,
     currentValuationId, setCurrentValuationId,
-    isDirty, setIsDirty
+    setIsDirty
   } = useActiveValuation();
 
   const { handleSaveValuation } = useSavedValuations();
@@ -64,14 +63,14 @@ function Dashboard() {
   const handleSaveAgent = async () => {
     if (!brokerName || !matricula) return;
     setIsSavingAgent(true);
-    try { await addAgent(brokerName, matricula); } 
-    catch (error) { console.error("Failed to save agent", error); } 
+    try { await addAgent(brokerName, matricula); }
+    catch (error) { console.error("Failed to save agent", error); }
     finally { setIsSavingAgent(false); }
   };
-  
+
   const onSaveSuccess = (id: string) => {
-      setCurrentValuationId(id);
-      setIsDirty(false);
+    setCurrentValuationId(id);
+    setIsDirty(false);
   };
 
   const handleSelectAgent = (agentId: string) => {
@@ -117,12 +116,12 @@ function Dashboard() {
       <main className="max-w-7xl mx-auto px-4 py-8 space-y-8">
         <div className="space-y-8">
           <Card className="bg-white border-brand/10 shadow-lg shadow-brand/5 overflow-hidden">
-             <div className="p-4 md:p-6">
+            <div className="p-4 md:p-6">
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 border-b pb-4">
                 <div className="flex items-center gap-2 text-brand"><Home className="w-5 h-5" /><h2 className="font-bold font-heading uppercase tracking-wider text-sm">Propiedad Objetivo</h2></div>
                 <div className="mt-2 md:mt-0 flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-lg border self-end">
-                    <span className="text-xs text-slate-500 uppercase font-medium">Sup. Homog.</span>
-                    <span className="font-bold text-brand-dark text-lg">{formatNumber(targetHomogenizedSurface)} m²</span>
+                  <span className="text-xs text-slate-500 uppercase font-medium">Sup. Homog.</span>
+                  <span className="font-bold text-brand-dark text-lg">{formatNumber(targetHomogenizedSurface)} m²</span>
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -170,7 +169,7 @@ function Dashboard() {
               <button onClick={() => addComparable()} className="flex items-center justify-center gap-1 text-sm font-medium text-brand bg-brand/10 hover:bg-brand/20 px-3 py-1.5 rounded-md w-full sm:w-auto"><Plus className="w-4 h-4" /> Agregar Comparable</button>
             </div>
             <div className="md:hidden">
-              {processedComparables.length > 0 ? (processedComparables.map(comp => (<div key={comp.id} className="border-b p-4 space-y-3"><div className="flex justify-between items-start"><input type="text" value={comp.address} onChange={e => updateComparable(comp.id, { address: e.target.value })} className="bg-transparent font-semibold text-slate-800 w-full p-0 border-0 focus:ring-0" placeholder="Dirección..." /><button onClick={() => deleteComparable(comp.id)} className="p-1.5 text-slate-400 hover:text-rose-500 rounded-md"><Trash2 className="w-4 h-4"/></button></div><div className="grid grid-cols-2 gap-4"><div><label className="text-xs text-slate-500">Precio (USD)</label><input type="number" value={comp.price} onChange={e => updateComparable(comp.id, { price: parseFloat(e.target.value) || 0 })} className="w-full p-1 rounded-md border-slate-200" /></div><div><label className="text-xs text-slate-500">Sup. Cubierta</label><input type="number" value={comp.coveredSurface} onChange={e => updateComparable(comp.id, { coveredSurface: parseFloat(e.target.value) || 0 })} className="w-full p-1 rounded-md border-slate-200" /></div></div><AnimatePresence>{expandedMobileCards.includes(comp.id) && (<motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-3 overflow-hidden"><div className="grid grid-cols-2 gap-4 pt-2"><div><label className="text-xs text-slate-500">Sup. Descub.</label><input type="number" value={comp.uncoveredSurface} onChange={e => updateComparable(comp.id, { uncoveredSurface: parseFloat(e.target.value) || 0 })} className="w-full p-1 rounded-md border-slate-200 text-sm" /></div><div><label className="text-xs text-slate-500">Factor</label><input type="number" value={comp.homogenizationFactor} onChange={e => updateComparable(comp.id, { homogenizationFactor: parseFloat(e.target.value) || 0 })} className="w-full p-1 rounded-md border-slate-200 text-sm" /></div></div></motion.div>)}</AnimatePresence><button onClick={() => toggleMobileCard(comp.id)} className="text-xs text-brand font-medium flex items-center gap-1">{expandedMobileCards.includes(comp.id) ? 'Menos' : 'Más'} Opciones<ChevronDown className={`w-3 h-3 transition-transform ${expandedMobileCards.includes(comp.id) ? 'rotate-180' : ''}`} /></button></div>))) : (<div className="p-8 text-center text-slate-400 text-sm">Agrega tu primer comparable.</div>)}
+              {processedComparables.length > 0 ? (processedComparables.map(comp => (<div key={comp.id} className="border-b p-4 space-y-3"><div className="flex justify-between items-start"><input type="text" value={comp.address} onChange={e => updateComparable(comp.id, { address: e.target.value })} className="bg-transparent font-semibold text-slate-800 w-full p-0 border-0 focus:ring-0" placeholder="Dirección..." /><button onClick={() => deleteComparable(comp.id)} className="p-1.5 text-slate-400 hover:text-rose-500 rounded-md"><Trash2 className="w-4 h-4" /></button></div><div className="grid grid-cols-2 gap-4"><div><label className="text-xs text-slate-500">Precio (USD)</label><input type="number" value={comp.price} onChange={e => updateComparable(comp.id, { price: parseFloat(e.target.value) || 0 })} className="w-full p-1 rounded-md border-slate-200" /></div><div><label className="text-xs text-slate-500">Sup. Cubierta</label><input type="number" value={comp.coveredSurface} onChange={e => updateComparable(comp.id, { coveredSurface: parseFloat(e.target.value) || 0 })} className="w-full p-1 rounded-md border-slate-200" /></div></div><AnimatePresence>{expandedMobileCards.includes(comp.id) && (<motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-3 overflow-hidden"><div className="grid grid-cols-2 gap-4 pt-2"><div><label className="text-xs text-slate-500">Sup. Descub.</label><input type="number" value={comp.uncoveredSurface} onChange={e => updateComparable(comp.id, { uncoveredSurface: parseFloat(e.target.value) || 0 })} className="w-full p-1 rounded-md border-slate-200 text-sm" /></div><div><label className="text-xs text-slate-500">Factor</label><input type="number" value={comp.homogenizationFactor} onChange={e => updateComparable(comp.id, { homogenizationFactor: parseFloat(e.target.value) || 0 })} className="w-full p-1 rounded-md border-slate-200 text-sm" /></div></div></motion.div>)}</AnimatePresence><button onClick={() => toggleMobileCard(comp.id)} className="text-xs text-brand font-medium flex items-center gap-1">{expandedMobileCards.includes(comp.id) ? 'Menos' : 'Más'} Opciones<ChevronDown className={`w-3 h-3 transition-transform ${expandedMobileCards.includes(comp.id) ? 'rotate-180' : ''}`} /></button></div>))) : (<div className="p-8 text-center text-slate-400 text-sm">Agrega tu primer comparable.</div>)}
             </div>
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm text-left"><thead className="text-xs font-semibold text-slate-500 uppercase bg-slate-50/50"><tr><th className="px-6 py-4 min-w-[220px]">Dirección</th><th className="px-4 py-4 text-right w-36">Precio (USD)</th><th className="px-4 py-4 text-right w-28">Sup. Cub (m²)</th><th className="px-4 py-4 text-right w-28">Sup. Desc (m²)</th><th className="px-4 py-4 text-center w-24">Factor</th><th className="px-4 py-4 text-right w-32">$/m² H</th><th className="px-2 py-4 w-10" /></tr></thead><tbody className="divide-y divide-slate-100">{processedComparables.map((comp) => (<tr key={comp.id} className="group hover:bg-slate-50/80"><td className="px-6 py-3"><input type="text" value={comp.address} onChange={e => updateComparable(comp.id, { address: e.target.value })} className="bg-transparent p-0 w-full focus:ring-0 font-medium" /></td><td className="px-4 py-3"><input type="number" value={comp.price} onChange={e => updateComparable(comp.id, { price: parseFloat(e.target.value) || 0 })} className="bg-transparent p-0 w-full text-right" /></td><td className="px-4 py-3"><input type="number" value={comp.coveredSurface} onChange={e => updateComparable(comp.id, { coveredSurface: parseFloat(e.target.value) || 0 })} className="bg-transparent p-0 w-full text-right" /></td><td className="px-4 py-3"><input type="number" value={comp.uncoveredSurface} onChange={e => updateComparable(comp.id, { uncoveredSurface: parseFloat(e.target.value) || 0 })} className="bg-transparent p-0 w-full text-right" /></td><td className="px-4 py-3 text-center"><input type="number" step="0.05" value={comp.homogenizationFactor} onChange={e => updateComparable(comp.id, { homogenizationFactor: parseFloat(e.target.value) || 0 })} className="bg-slate-50 border rounded px-1 py-1 w-16 text-center text-xs" /></td><td className="px-4 py-3 text-right font-bold text-xs">${formatNumber(comp.hPrice || 0)}</td><td className="px-2 py-3 text-center"><button onClick={() => deleteComparable(comp.id)} className="text-slate-300 hover:text-rose-500 p-1.5 rounded opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button></td></tr>))}</tbody></table>

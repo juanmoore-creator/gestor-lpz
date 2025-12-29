@@ -4,8 +4,8 @@ import { useSavedValuations } from '../hooks/useSavedValuations';
 import { useActiveValuation } from '../hooks/useActiveValuation';
 import type { SavedValuation } from '../types';
 import {
-    Search, Filter, Plus, ArrowUpDown, Trash2, ArrowRight, MapPin,
-    Calendar, User, FileText, AlertCircle, TrendingUp
+    Search, Filter, Plus, ArrowUpDown, Trash2, ArrowRight,
+    Calendar
 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -152,7 +152,7 @@ const SavedValuations = () => {
                     </div>
                 </div>
             </div>
-            
+
             {/* Mobile View: Cards */}
             <div className="md:hidden space-y-4">
                 {processedValuations.map(val => (
@@ -167,18 +167,18 @@ const SavedValuations = () => {
                             </button>
                         </div>
                         <div className="text-xs text-slate-500 mt-1 mb-3 flex items-center gap-2">
-                             <Calendar className="w-3.5 h-3.5" />
-                             {new Date(val.date).toLocaleDateString()}
+                            <Calendar className="w-3.5 h-3.5" />
+                            {new Date(val.date).toLocaleDateString()}
                         </div>
                         <div className="grid grid-cols-2 gap-3 text-sm mb-4">
-                             <div className="bg-slate-50 p-2 rounded-lg">
+                            <div className="bg-slate-50 p-2 rounded-lg">
                                 <p className="text-xs text-slate-400">Cliente</p>
                                 <p className="font-medium text-slate-700">{val.clientName || 'N/A'}</p>
-                             </div>
-                             <div className="bg-slate-50 p-2 rounded-lg">
+                            </div>
+                            <div className="bg-slate-50 p-2 rounded-lg">
                                 <p className="text-xs text-slate-400">Comparables</p>
                                 <p className="font-medium text-slate-700">{val.comparables?.length || 0}</p>
-                             </div>
+                            </div>
                         </div>
                         <button
                             onClick={() => handleLoad(val)}
@@ -196,7 +196,7 @@ const SavedValuations = () => {
                     <div className="overflow-x-auto min-h-[400px]">
                         <table className="w-full text-sm text-left">
                             {/* Table Header */}
-                             <thead className="text-xs font-semibold text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+                            <thead className="text-xs font-semibold text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
                                 <tr>
                                     <th className="px-6 py-4 cursor-pointer hover:bg-slate-100" onClick={() => requestSort('date')}>
                                         <div className="flex items-center gap-1">Fecha {getSortIcon('date')}</div>
@@ -216,8 +216,8 @@ const SavedValuations = () => {
                                 <AnimatePresence mode='popLayout'>
                                     {processedValuations.length > 0 && processedValuations.map((val) => (
                                         <motion.tr layout key={val.id} className="group hover:bg-slate-50">
-                                           {/* Table Row Content */}
-                                           <td className="px-6 py-4 whitespace-nowrap">
+                                            {/* Table Row Content */}
+                                            <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex items-center text-slate-500 gap-2">
                                                     <Calendar className="w-3.5 h-3.5" />
                                                     {new Date(val.date).toLocaleDateString()}
@@ -252,12 +252,12 @@ const SavedValuations = () => {
                             </tbody>
                         </table>
                     </div>
-                     <div className="bg-slate-50 border-t border-slate-200 px-6 py-3 text-xs text-slate-500 flex justify-between items-center">
+                    <div className="bg-slate-50 border-t border-slate-200 px-6 py-3 text-xs text-slate-500 flex justify-between items-center">
                         <span>Mostrando {processedValuations.length} de {savedValuations.length} tasaciones</span>
                     </div>
                 </Card>
             </div>
-             {processedValuations.length === 0 && (
+            {processedValuations.length === 0 && (
                 <div className="text-center py-16 text-slate-500">
                     <Search className="w-12 h-12 mx-auto mb-4 opacity-20" />
                     <h3 className="text-lg font-semibold text-slate-700">No se encontraron tasaciones</h3>
