@@ -57,7 +57,7 @@ export default function ClientsManager() {
     };
 
     const getStatusBadge = (status: string) => {
-        const statuses: { [key: string]: JSX.Element } = {
+        const statuses: Record<string, React.ReactNode> = {
             active: <span className="px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">Activo</span>,
             lead: <span className="px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Lead</span>,
             past: <span className="px-2 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">Pasado</span>,
@@ -126,19 +126,19 @@ export default function ClientsManager() {
                 {filteredClients.map(client => (
                     <Card key={client.id} className="p-4" onClick={() => setSelectedClient(client)}>
                         <div className="flex justify-between items-start">
-                             <div>
+                            <div>
                                 <p className="font-bold text-slate-800">{client.name}</p>
                                 <p className="text-xs text-slate-500">{client.email || client.phone}</p>
                             </div>
                             {getStatusBadge(client.status)}
                         </div>
                         <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
-                             <div className="text-sm text-slate-500">
+                            <div className="text-sm text-slate-500">
                                 <span className="font-medium text-slate-700">{client.valuations.length}</span> tasaciones
                             </div>
                             <div className="flex items-center gap-2">
-                                <button onClick={(e) => { e.stopPropagation(); openEditClientModal(client);}} className="p-2 text-slate-500 hover:bg-slate-100 rounded-md"><Pencil className="w-4 h-4"/></button>
-                                <button onClick={(e) => { e.stopPropagation(); deleteClient(client.id);}} className="p-2 text-slate-500 hover:bg-rose-100 hover:text-rose-600 rounded-md"><Trash2 className="w-4 h-4"/></button>
+                                <button onClick={(e) => { e.stopPropagation(); openEditClientModal(client); }} className="p-2 text-slate-500 hover:bg-slate-100 rounded-md"><Pencil className="w-4 h-4" /></button>
+                                <button onClick={(e) => { e.stopPropagation(); deleteClient(client.id); }} className="p-2 text-slate-500 hover:bg-rose-100 hover:text-rose-600 rounded-md"><Trash2 className="w-4 h-4" /></button>
                                 <button onClick={() => setSelectedClient(client)} className="px-3 py-1.5 text-xs font-medium text-brand bg-brand/10 rounded-md">Detalles</button>
                             </div>
                         </div>
@@ -182,18 +182,18 @@ export default function ClientsManager() {
                     </div>
                 </Card>
             </div>
-            
+
             {filteredClients.length === 0 && (
-                 <div className="p-12 text-center text-slate-400">
+                <div className="p-12 text-center text-slate-400">
                     <Users className="w-12 h-12 mx-auto mb-3 opacity-20" />
                     <p>No se encontraron clientes.</p>
                 </div>
             )}
 
-            {/* Detail Drawer & Modals remain the same */}
+            {/* Detail Drawer */}
             <div className={`fixed inset-y-0 right-0 w-full max-w-lg bg-white shadow-2xl transform transition-transform z-50 ${selectedClient ? 'translate-x-0' : 'translate-x-full'}`}>
-                 {selectedClient && (
-                    <>
+                {selectedClient && (
+                    <div className="flex flex-col h-full">
                         <div className="p-6 border-b flex items-center justify-between bg-slate-50">
                             <div>
                                 <h2 className="text-xl font-bold font-heading">{selectedClient.name}</h2>
@@ -201,46 +201,165 @@ export default function ClientsManager() {
                             </div>
                             <button onClick={() => setSelectedClient(null)} className="p-2 rounded-full hover:bg-slate-100"><X /></button>
                         </div>
+
                         <div className="flex-1 overflow-y-auto p-6 space-y-8">
-                             {/* Content of the drawer */}
-                              <div className="space-y-4">
+                            {/* Contact Info */}
+                            <div className="space-y-4">
                                 <h3 className="text-xs font-bold text-slate-400 uppercase">Datos de Contacto</h3>
                                 <div className="bg-slate-50 p-4 rounded-xl space-y-3">
-                                    <div className="flex justify-between"><span className="text-sm text-slate-500">Teléfono</span><span className="text-sm font-medium font-mono">{selectedClient.phone || '-'}</span></div>
-                                    <div className="flex justify-between"><span className="text-sm text-slate-500">Email</span><span className="text-sm font-medium">{selectedClient.email || '-'}</span></div>
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex items-center gap-2 text-sm text-slate-500">
+                                            <Phone className="w-3.5 h-3.5" /> Teléfono
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-medium font-mono">{selectedClient.phone || '-'}</span>
+                                            {selectedClient.phone && (
+                                                <a
+                                                    href={`https://wa.me/${selectedClient.phone.replace(/\D/g, '')}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="p-1 text-emerald-500 hover:bg-emerald-50 rounded"
+                                                    title="Enviar WhatsApp"
+                                                >
+                                                    <MessageCircle className="w-4 h-4" />
+                                                </a>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm text-slate-500">Email</span>
+                                        <span className="text-sm font-medium">{selectedClient.email || '-'}</span>
+                                    </div>
                                 </div>
                             </div>
-                             <div className="space-y-4">
-                                <h3 className="text-xs font-bold text-slate-400 uppercase">Tasaciones Guardadas</h3>
-                                {selectedClient.valuations.length > 0 ? selectedClient.valuations.map((val: any) => (
-                                    <div key={val.id} onClick={() => handleLoad(val)} className="group p-3 bg-white border rounded-xl cursor-pointer">
-                                        <div className="flex justify-between items-start"><span className="text-xs font-semibold text-brand bg-brand/5 px-2 py-0.5 rounded-full">{new Date(val.date).toLocaleDateString()}</span><ArrowRight className="w-3 h-3 text-slate-300" /></div>
-                                        <div className="font-medium text-sm mt-1">{val.target.address}</div>
+
+                            {/* Valuations */}
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1.5">
+                                        <History className="w-3.5 h-3.5" /> Tasaciones Guardadas
+                                    </h3>
+                                    <button
+                                        onClick={() => {
+                                            setNotesClient(selectedClient);
+                                            setIsNotesModalOpen(true);
+                                        }}
+                                        className="text-xs font-semibold text-brand hover:text-brand-dark flex items-center gap-1 bg-brand/5 px-2 py-1 rounded"
+                                    >
+                                        <FileText className="w-3 h-3" /> Notas
+                                    </button>
+                                </div>
+                                {selectedClient.valuations.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {selectedClient.valuations.map((val: any) => (
+                                            <div key={val.id} onClick={() => handleLoad(val)} className="group p-3 bg-white border rounded-xl cursor-pointer hover:border-brand/30 transition-colors shadow-sm">
+                                                <div className="flex justify-between items-start">
+                                                    <span className="text-xs font-semibold text-brand bg-brand/5 px-2 py-0.5 rounded-full">
+                                                        {new Date(val.date).toLocaleDateString()}
+                                                    </span>
+                                                    <ArrowRight className="w-3 h-3 text-slate-300 group-hover:text-brand transition-colors" />
+                                                </div>
+                                                <div className="font-medium text-sm mt-1">{val.target.address}</div>
+                                            </div>
+                                        ))}
                                     </div>
-                                )) : <div className="p-4 bg-slate-50 rounded-xl text-center text-xs text-slate-400">No hay tasaciones registradas.</div>}
+                                ) : (
+                                    <div className="p-4 bg-slate-50 rounded-xl text-center text-xs text-slate-400">
+                                        No hay tasaciones registradas.
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Activity Timeline */}
+                            <div className="space-y-4">
+                                <h3 className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1.5">
+                                    <Activity className="w-3.5 h-3.5" /> Actividad Reciente
+                                </h3>
+                                <ClientActivityTimeline clientId={selectedClient.id} />
                             </div>
                         </div>
-                    </>
+                    </div>
                 )}
             </div>
-            {selectedClient && <div className="fixed inset-0 bg-black/20 z-40" onClick={() => setSelectedClient(null)} />}
+
+            {selectedClient && (
+                <div
+                    className="fixed inset-0 bg-black/20 z-40 backdrop-blur-sm"
+                    onClick={() => setSelectedClient(null)}
+                />
+            )}
+
+            {/* Edit/New Client Modal */}
             {isModalOpen && (
-                 <div className="fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+                <div className="fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-200">
                         <h3 className="text-xl font-bold mb-4">{editingClient?.id ? 'Editar Cliente' : 'Nuevo Cliente'}</h3>
                         <form onSubmit={handleSaveClient} className="space-y-4">
-                            <input required type="text" value={editingClient?.name || ''} onChange={e => setEditingClient(p => ({ ...p, name: e.target.value }))} className="w-full bg-slate-50 border-slate-200 rounded-lg p-2" placeholder="Nombre Completo" />
-                            <input type="email" value={editingClient?.email || ''} onChange={e => setEditingClient(p => ({ ...p, email: e.target.value }))} className="w-full bg-slate-50 border-slate-200 rounded-lg p-2" placeholder="Email" />
-                            <input type="tel" value={editingClient?.phone || ''} onChange={e => setEditingClient(p => ({ ...p, phone: e.target.value }))} className="w-full bg-slate-50 border-slate-200 rounded-lg p-2" placeholder="Teléfono" />
-                             <select value={editingClient?.status || 'lead'} onChange={e => setEditingClient(p => ({ ...p, status: e.target.value as any }))} className="w-full bg-slate-50 border-slate-200 rounded-lg p-2">
-                                <option value="lead">Lead</option><option value="active">Activo</option><option value="past">Pasado</option>
+                            <input
+                                required
+                                type="text"
+                                value={editingClient?.name || ''}
+                                onChange={e => setEditingClient(p => ({ ...p, name: e.target.value }))}
+                                className="w-full bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/10 focus:border-brand rounded-lg p-2.5 text-sm"
+                                placeholder="Nombre Completo"
+                            />
+                            <input
+                                type="email"
+                                value={editingClient?.email || ''}
+                                onChange={e => setEditingClient(p => ({ ...p, email: e.target.value }))}
+                                className="w-full bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/10 focus:border-brand rounded-lg p-2.5 text-sm"
+                                placeholder="Email"
+                            />
+                            <input
+                                type="tel"
+                                value={editingClient?.phone || ''}
+                                onChange={e => setEditingClient(p => ({ ...p, phone: e.target.value }))}
+                                className="w-full bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/10 focus:border-brand rounded-lg p-2.5 text-sm"
+                                placeholder="Teléfono"
+                            />
+                            <select
+                                value={editingClient?.status || 'lead'}
+                                onChange={e => setEditingClient(p => ({ ...p, status: e.target.value as any }))}
+                                className="w-full bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/10 focus:border-brand rounded-lg p-2.5 text-sm appearance-none"
+                            >
+                                <option value="lead">Lead</option>
+                                <option value="active">Activo</option>
+                                <option value="past">Pasado</option>
                             </select>
-                            <textarea value={editingClient?.notes || ''} onChange={e => setEditingClient(p => ({ ...p, notes: e.target.value }))} className="w-full bg-slate-50 border-slate-200 rounded-lg p-2 min-h-[80px]" placeholder="Notas..." />
-                            <div className="flex justify-end gap-2 pt-4"><button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm rounded-lg">Cancelar</button><button type="submit" className="px-4 py-2 text-sm text-white bg-brand rounded-lg">Guardar</button></div>
+                            <textarea
+                                value={editingClient?.notes || ''}
+                                onChange={e => setEditingClient(p => ({ ...p, notes: e.target.value }))}
+                                className="w-full bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/10 focus:border-brand rounded-lg p-2.5 text-sm min-h-[100px]"
+                                placeholder="Notas internas..."
+                            />
+                            <div className="flex justify-end gap-2 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 text-sm font-medium text-white bg-brand hover:bg-brand-dark rounded-lg shadow-sm transition-colors"
+                                >
+                                    Guardar Cliente
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>
             )}
+
+            <NotesModal
+                isOpen={isNotesModalOpen}
+                onClose={() => {
+                    setIsNotesModalOpen(false);
+                    setNotesClient(null);
+                }}
+                client={notesClient}
+            />
         </div>
     );
 }

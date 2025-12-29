@@ -4,8 +4,11 @@ import clsx from 'clsx';
 
 export const cn = (...inputs: (string | undefined | null | false)[]) => twMerge(clsx(inputs));
 
-export const Card = ({ children, className }: { children: React.ReactNode, className?: string }) => (
-    <div className={cn("bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden", className)}>
+export const Card = ({ children, className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+    <div
+        className={cn("bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden", className)}
+        {...props}
+    >
         {children}
     </div>
 );
