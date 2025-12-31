@@ -4,23 +4,22 @@ import { getFirestore } from 'firebase-admin/firestore';
 
 // Initialize Firebase Admin if not already initialized
 if (!getApps().length) {
-    // Assumption: we are in a Vercel environment where we might not have the service account file
-    // For local dev, we might need a different approach or rely on default credentials if set up
-    // However, the instructions imply using environment variables for the client ID/Secret.
-    // For Firestore access in this backend function, we ideally need admin privileges.
-    // If FIREBASE_SERVICE_ACCOUNT is available as an env var (JSON string), utilize it.
-    // Otherwise, we'll try standard initialization which might work if GOOGLE_APPLICATION_CREDENTIALS is set.
+    try {
+        const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
+            ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+            : undefined;
 
-    // NOTE: The user prompt asked to "Persistencia en Firestore: Modifica la lógica para que el refresh_token se guarde de forma segura en users/{uid}/integrations/calendar."
-    // Since this is a serverless function, we should use firebase-admin.
-
-    const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
-        ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-        : undefined;
-
-    initializeApp({
-        credential: serviceAccount ? cert(serviceAccount) : undefined
-    });
+        if (serviceAccount) {
+            initializeApp({
+                credential: cert(serviceAccount)
+            });
+        } else {
+            // Try default initialization (works if configured in Vercel/GCP environment)
+            initializeApp();
+        }
+    } catch (error) {
+        console.error("Firebase Admin initialization error:", error);
+    }
 }
 
 const db = getFirestore();
@@ -144,6 +143,12 @@ export default async function handler(req, res) {
 
     } catch (error) {
         console.error("Auth Error:", error);
-        return res.status(500).json({ error: 'Authentication failed', details: error.message });
+        // Ensure we send JSON even on error to avoid syntax errors on client
+        return res.status(500).json({
+            success: false,
+            error: 'Authentication failed',
+            details: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 }

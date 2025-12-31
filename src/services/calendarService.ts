@@ -31,6 +31,7 @@ export const calendarService = {
             scope: SCOPES,
             ux_mode: 'popup',
             access_type: 'offline', // Crucial for receiving refresh_token
+            redirect_uri: 'postmessage',
             callback: async (response: any) => {
                 if (response.code) {
                     try {
@@ -45,6 +46,11 @@ export const calendarService = {
                                 uid: options.uid,
                             }),
                         });
+
+                        if (!authResponse.ok) {
+                            const errorText = await authResponse.text();
+                            throw new Error(`Server Error (${authResponse.status}): ${errorText}`);
+                        }
 
                         const data = await authResponse.json();
 
@@ -69,8 +75,6 @@ export const calendarService = {
     getValidAccessToken: async (uid: string): Promise<string | null> => {
         try {
             // 1. Check local Firestore cache (or lightweight check) 
-            // Ideally we check expiry here.
-
             const docRef = doc(db, 'users', uid, 'integrations', 'calendar');
             const docSnap = await getDoc(docRef);
 
@@ -94,6 +98,11 @@ export const calendarService = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ uid: uid }) // Backend looks up refresh_token by UID
             });
+
+            if (!refreshResponse.ok) {
+                const errorText = await refreshResponse.text();
+                throw new Error(`Refresh failed (${refreshResponse.status}): ${errorText}`);
+            }
 
             const refreshData = await refreshResponse.json();
 
