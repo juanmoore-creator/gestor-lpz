@@ -28,7 +28,7 @@ export function ClientActivityTimeline({ clientId }: ClientActivityTimelineProps
     useEffect(() => {
         if (!user?.uid || !clientId) return;
 
-        const logsRef = collection(db, `users / ${user.uid} /clients/${clientId}/logs`);
+        const logsRef = collection(db, `users/${user.uid}/clients/${clientId}/logs`);
         const q = query(logsRef, orderBy('date', 'desc'));
 
         const unsubscribe = onSnapshot(q, (snapshot) => {

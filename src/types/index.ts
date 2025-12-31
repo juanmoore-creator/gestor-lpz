@@ -61,7 +61,11 @@ export interface Client {
     name: string;
     email: string;
     phone: string;
-    status: 'active' | 'lead' | 'past';
+    status: 'Nuevo' | 'En Seguimiento' | 'Cerrado';
+    type: 'Comprador' | 'Propietario' | 'Inquilino';
+    budget?: string;
+    interestZone?: string;
+    propertyType?: string;
     createdAt: number;
     lastActivity: number;
     notes?: string;

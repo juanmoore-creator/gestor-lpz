@@ -3,7 +3,7 @@ import { X, Send, Save, Clock, FileText } from 'lucide-react';
 import { useClients } from '../context/ClientsContext';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../lib/firebase';
-import { collection, addDoc, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
 import type { Client } from '../types';
 
 interface NotesModalProps {
@@ -41,16 +41,21 @@ export function NotesModal({ client, isOpen, onClose }: NotesModalProps) {
         const logsRef = collection(db, `users/${user.uid}/clients/${client.id}/logs`);
         const q = query(
             logsRef,
-            where('type', '==', 'note'),
             orderBy('date', 'desc')
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const notes = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
+            const notes = snapshot.docs
+                .map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }))
+                .filter((log: any) => log.type === 'note');
+
             setHistoryNotes(notes);
+            setLoadingHistory(false);
+        }, (error) => {
+            console.error("Error fetching client notes history:", error);
             setLoadingHistory(false);
         });
 

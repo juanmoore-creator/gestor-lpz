@@ -271,7 +271,7 @@ const ControlPanel = () => {
                     <Plus className="w-5 h-5" /> Nueva Tasación
                 </button>
                 <button
-                    onClick={() => navigate('/app/clients')}
+                    onClick={() => navigate('/app/clients', { state: { openNewClient: true } })}
                     className="flex items-center justify-center gap-2 px-4 py-3 bg-white text-slate-700 rounded-lg shadow-md border border-slate-200 hover:bg-slate-50 transition-colors font-semibold text-lg"
                 >
                     <Users className="w-5 h-5" /> Nuevo Cliente

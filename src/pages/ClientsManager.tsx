@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
     Users, Search, Filter, Phone, MoveRight as ArrowRight, X, MessageCircle, Pencil, History,
-    TrendingUp, Activity, UserPlus, Trash2, FileText
+    TrendingUp, Activity, UserPlus, Trash2, FileText, Mail, Calendar, DollarSign, MapPin, Home,
+    UserCheck, Clock, CheckCircle2
 } from 'lucide-react';
 import { ClientActivityTimeline } from '../components/ClientActivityTimeline';
 import { NotesModal } from '../components/NotesModal';
@@ -11,17 +12,19 @@ import { useClients } from '../context/ClientsContext';
 import { useSavedValuations } from '../hooks/useSavedValuations';
 import { useActiveValuation } from '../hooks/useActiveValuation';
 import type { Client, SavedValuation } from '../types';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export default function ClientsManager() {
     const { clients, addClient, updateClient, deleteClient } = useClients();
     const { savedValuations, handleLoadValuation } = useSavedValuations();
     const { loadActiveValuation, isDirty } = useActiveValuation();
     const navigate = useNavigate();
+    const location = useLocation();
 
     const [selectedClient, setSelectedClient] = useState<Client & { valuations: any[] } | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [typeFilter, setTypeFilter] = useState<'all' | 'Comprador' | 'Propietario' | 'Inquilino'>('all');
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -44,9 +47,10 @@ export default function ClientsManager() {
             const lowerQuery = searchQuery.toLowerCase();
             const matchesSearch = client.name.toLowerCase().includes(lowerQuery) || (client.email && client.email.toLowerCase().includes(lowerQuery));
             const matchesStatus = statusFilter === 'all' || client.status === statusFilter;
-            return matchesSearch && matchesStatus;
+            const matchesType = typeFilter === 'all' || client.type === typeFilter;
+            return matchesSearch && matchesStatus && matchesType;
         });
-    }, [clientsWithHistory, searchQuery, statusFilter]);
+    }, [clientsWithHistory, searchQuery, statusFilter, typeFilter]);
 
     const handleLoad = (val: SavedValuation) => {
         const payload = { valuation: val, isDirty };
@@ -58,11 +62,26 @@ export default function ClientsManager() {
 
     const getStatusBadge = (status: string) => {
         const statuses: Record<string, React.ReactNode> = {
-            active: <span className="px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">Activo</span>,
-            lead: <span className="px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Lead</span>,
-            past: <span className="px-2 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">Pasado</span>,
+            'Nuevo': <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700 shadow-sm border border-blue-200"><Clock className="w-2.5 h-2.5" /> Nuevo</span>,
+            'En Seguimiento': <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 shadow-sm border border-amber-200"><Activity className="w-2.5 h-2.5" /> Seguimiento</span>,
+            'Cerrado': <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 shadow-sm border border-emerald-200"><CheckCircle2 className="w-2.5 h-2.5" /> Cerrado</span>,
         };
-        return statuses[status] || null;
+        return statuses[status] || <span className="px-2 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">{status}</span>;
+    };
+
+    const getTypeTag = (type: string) => {
+        const types: Record<string, { bg: string, text: string, icon: React.ReactNode }> = {
+            'Comprador': { bg: 'bg-indigo-50 text-indigo-700 border-indigo-100', text: 'Comprador', icon: <Users className="w-3 h-3" /> },
+            'Propietario': { bg: 'bg-rose-50 text-rose-700 border-rose-100', text: 'Propietario', icon: <Home className="w-3 h-3" /> },
+            'Inquilino': { bg: 'bg-cyan-50 text-cyan-700 border-cyan-100', text: 'Inquilino', icon: <UserCheck className="w-3 h-3" /> },
+        };
+        const config = types[type] || { bg: 'bg-slate-50 text-slate-700 border-slate-100', text: type, icon: null };
+        return (
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium border ${config.bg}`}>
+                {config.icon}
+                {config.text}
+            </span>
+        );
     };
 
     const handleSaveClient = async (e: React.FormEvent) => {
@@ -73,16 +92,31 @@ export default function ClientsManager() {
                 await updateClient(editingClient.id, editingClient);
             } else {
                 await addClient({
-                    name: editingClient.name || '', email: editingClient.email || '', phone: editingClient.phone || '',
-                    status: (editingClient.status as any) || 'lead', notes: editingClient.notes || ''
+                    name: editingClient.name || '',
+                    email: editingClient.email || '',
+                    phone: editingClient.phone || '',
+                    status: (editingClient.status as any) || 'Nuevo',
+                    type: (editingClient.type as any) || 'Comprador',
+                    budget: editingClient.budget || '',
+                    interestZone: editingClient.interestZone || '',
+                    propertyType: editingClient.propertyType || '',
+                    notes: editingClient.notes || ''
                 });
             }
             setIsModalOpen(false); setEditingClient(null);
         } catch (error) { console.error("Error saving client", error); }
     };
 
-    const openNewClientModal = () => { setEditingClient({ status: 'lead' }); setIsModalOpen(true); };
+    const openNewClientModal = () => { setEditingClient({ status: 'Nuevo', type: 'Comprador' }); setIsModalOpen(true); };
     const openEditClientModal = (client: Client) => { setEditingClient(client); setIsModalOpen(true); };
+
+    useEffect(() => {
+        if (location.state?.openNewClient) {
+            openNewClientModal();
+            // Clear state to avoid reopening on refresh
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, [location.state, navigate]);
 
     return (
         <div className="min-h-screen bg-slate-50 pb-8 relative overflow-x-hidden">
@@ -105,82 +139,126 @@ export default function ClientsManager() {
             </div>
 
             {/* Toolbar */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
-                <div className="relative w-full sm:w-80">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input type="text" placeholder="Buscar por nombre o email..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm" />
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-6 mb-8">
+                <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
+                    <div className="relative w-full sm:w-80">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input type="text" placeholder="Buscar por nombre o email..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand/10 focus:border-brand transition-all outline-none" />
+                    </div>
+
+                    <div className="flex p-1 bg-slate-200/50 rounded-xl w-full sm:w-auto">
+                        <button
+                            onClick={() => setTypeFilter('all')}
+                            className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${typeFilter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            Todos
+                        </button>
+                        {(['Comprador', 'Propietario', 'Inquilino'] as const).map((type) => (
+                            <button
+                                key={type}
+                                onClick={() => setTypeFilter(typeFilter === type ? 'all' : type)}
+                                className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${typeFilter === type ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                {type}s
+                            </button>
+                        ))}
+                    </div>
                 </div>
-                <div className="relative w-full sm:w-48">
+
+                <div className="relative w-full sm:w-48 lg:w-auto">
                     <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm appearance-none cursor-pointer">
+                    <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full lg:w-48 pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm appearance-none cursor-pointer focus:ring-2 focus:ring-brand/10 focus:border-brand transition-all outline-none">
                         <option value="all">Todos los Estados</option>
-                        <option value="active">Activos</option>
-                        <option value="lead">Leads</option>
-                        <option value="past">Pasados</option>
+                        <option value="Nuevo">Nuevos</option>
+                        <option value="En Seguimiento">En Seguimiento</option>
+                        <option value="Cerrado">Cerrados</option>
                     </select>
                 </div>
             </div>
 
-            {/* Mobile View */}
-            <div className="md:hidden space-y-4">
+            {/* Client Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {filteredClients.map(client => (
-                    <Card key={client.id} className="p-4" onClick={() => setSelectedClient(client)}>
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <p className="font-bold text-slate-800">{client.name}</p>
-                                <p className="text-xs text-slate-500">{client.email || client.phone}</p>
+                    <Card key={client.id} className="group flex flex-col h-full bg-white border-slate-200 hover:border-brand/30 hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden">
+                        {/* Header */}
+                        <div className="p-5 flex justify-between items-start gap-4">
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <h3 className="font-bold text-slate-900 truncate leading-tight">{client.name}</h3>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); openEditClientModal(client); }}
+                                        className="p-1 text-slate-400 hover:text-brand transition-colors opacity-0 group-hover:opacity-100"
+                                    >
+                                        <Pencil className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+                                {getTypeTag(client.type)}
                             </div>
                             {getStatusBadge(client.status)}
                         </div>
-                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
-                            <div className="text-sm text-slate-500">
-                                <span className="font-medium text-slate-700">{client.valuations.length}</span> tasaciones
+
+                        {/* Schematic Data */}
+                        <div className="px-5 pb-5 grid grid-cols-3 gap-2">
+                            <div className="bg-slate-50 p-2 rounded-xl text-center border border-slate-100">
+                                <DollarSign className="w-3.5 h-3.5 mx-auto mb-1 text-emerald-500" />
+                                <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mb-0.5 whitespace-nowrap overflow-hidden text-ellipsis">Presupuesto</p>
+                                <p className="text-xs font-bold text-slate-700 truncate">{client.budget || '-'}</p>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <button onClick={(e) => { e.stopPropagation(); openEditClientModal(client); }} className="p-2 text-slate-500 hover:bg-slate-100 rounded-md"><Pencil className="w-4 h-4" /></button>
-                                <button onClick={(e) => { e.stopPropagation(); deleteClient(client.id); }} className="p-2 text-slate-500 hover:bg-rose-100 hover:text-rose-600 rounded-md"><Trash2 className="w-4 h-4" /></button>
-                                <button onClick={() => setSelectedClient(client)} className="px-3 py-1.5 text-xs font-medium text-brand bg-brand/10 rounded-md">Detalles</button>
+                            <div className="bg-slate-50 p-2 rounded-xl text-center border border-slate-100">
+                                <MapPin className="w-3.5 h-3.5 mx-auto mb-1 text-brand/70" />
+                                <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mb-0.5 whitespace-nowrap overflow-hidden text-ellipsis">Zona</p>
+                                <p className="text-xs font-bold text-slate-700 truncate">{client.interestZone || '-'}</p>
                             </div>
+                            <div className="bg-slate-50 p-2 rounded-xl text-center border border-slate-100">
+                                <Home className="w-3.5 h-3.5 mx-auto mb-1 text-slate-400" />
+                                <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mb-0.5 whitespace-nowrap overflow-hidden text-ellipsis">Tipo</p>
+                                <p className="text-xs font-bold text-slate-700 truncate">{client.propertyType || '-'}</p>
+                            </div>
+                        </div>
+
+                        {/* Quick Actions Bar */}
+                        <div className="mt-auto border-t border-slate-100 bg-slate-50/50 p-2 flex items-center gap-2">
+                            <div className="flex gap-1 flex-1">
+                                {client.phone && (
+                                    <a
+                                        href={`https://wa.me/${client.phone.replace(/\D/g, '')}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-2 bg-white text-emerald-600 hover:text-emerald-700 border border-slate-200 rounded-lg transition-colors shadow-sm"
+                                        title="WhatsApp"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        <MessageCircle className="w-4 h-4" />
+                                    </a>
+                                )}
+                                {client.email && (
+                                    <a
+                                        href={`mailto:${client.email}`}
+                                        className="p-2 bg-white text-blue-600 hover:text-blue-700 border border-slate-200 rounded-lg transition-colors shadow-sm"
+                                        title="Email"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        <Mail className="w-4 h-4" />
+                                    </a>
+                                )}
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); navigate('/app/calendario'); }}
+                                    className="p-2 bg-white text-slate-600 hover:text-slate-700 border border-slate-200 rounded-lg transition-colors shadow-sm"
+                                    title="Agendar"
+                                >
+                                    <Calendar className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            <button
+                                onClick={() => setSelectedClient(client)}
+                                className="px-4 py-2 bg-brand hover:bg-brand-dark text-white rounded-lg font-bold text-xs shadow-sm transition-all"
+                            >
+                                Ver Perfil Completo
+                            </button>
                         </div>
                     </Card>
                 ))}
-            </div>
-
-            {/* Desktop View */}
-            <div className="hidden md:block">
-                <Card className="bg-white border-slate-200 shadow-sm overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="text-xs font-semibold text-slate-500 uppercase bg-slate-50 border-b">
-                                <tr>
-                                    <th className="px-6 py-4">Cliente</th>
-                                    <th className="px-4 py-4">Contacto</th>
-                                    <th className="px-4 py-4 text-center">Tasaciones</th>
-                                    <th className="px-4 py-4">Estado</th>
-                                    <th className="px-4 py-4 text-right">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {filteredClients.map((client) => (
-                                    <tr key={client.id} onClick={() => setSelectedClient(client)} className="group hover:bg-slate-50 cursor-pointer">
-                                        <td className="px-6 py-4 font-semibold text-slate-800">{client.name}</td>
-                                        <td className="px-4 py-4 text-slate-600">{client.email || client.phone}</td>
-                                        <td className="px-4 py-4 text-center">
-                                            <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100">{client.valuations.length}</span>
-                                        </td>
-                                        <td className="px-4 py-4">{getStatusBadge(client.status)}</td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100" onClick={(e) => e.stopPropagation()}>
-                                                <button onClick={() => openEditClientModal(client)} className="p-1.5 text-slate-400 hover:text-brand rounded"><Pencil className="w-4 h-4" /></button>
-                                                <button onClick={() => deleteClient(client.id)} className="p-1.5 text-slate-400 hover:text-rose-600 rounded"><Trash2 className="w-4 h-4" /></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </Card>
             </div>
 
             {filteredClients.length === 0 && (
@@ -194,41 +272,94 @@ export default function ClientsManager() {
             <div className={`fixed inset-y-0 right-0 w-full max-w-lg bg-white shadow-2xl transform transition-transform z-50 ${selectedClient ? 'translate-x-0' : 'translate-x-full'}`}>
                 {selectedClient && (
                     <div className="flex flex-col h-full">
-                        <div className="p-6 border-b flex items-center justify-between bg-slate-50">
-                            <div>
-                                <h2 className="text-xl font-bold font-heading">{selectedClient.name}</h2>
-                                <div className="flex items-center gap-2 mt-1">{getStatusBadge(selectedClient.status)}</div>
+                        <div className="p-6 border-b flex items-center justify-between bg-white">
+                            <div className="flex-1 min-w-0 mr-4">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <h2 className="text-xl font-bold font-heading truncate">{selectedClient.name}</h2>
+                                    <button
+                                        onClick={() => openEditClientModal(selectedClient)}
+                                        className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors"
+                                    >
+                                        <Pencil className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            await deleteClient(selectedClient.id);
+                                            setSelectedClient(null);
+                                        }}
+                                        className="p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-colors"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                                <div className="flex items-center gap-2">{getStatusBadge(selectedClient.status)} {getTypeTag(selectedClient.type)}</div>
                             </div>
                             <button onClick={() => setSelectedClient(null)} className="p-2 rounded-full hover:bg-slate-100"><X /></button>
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                            {/* Key Stats Grid */}
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
+                                    <DollarSign className="w-5 h-5 mx-auto mb-2 text-emerald-500" />
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Presupuesto</p>
+                                    <p className="text-sm font-bold text-slate-700 truncate">{selectedClient.budget || '-'}</p>
+                                </div>
+                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
+                                    <MapPin className="w-5 h-5 mx-auto mb-2 text-brand/70" />
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Zona</p>
+                                    <p className="text-sm font-bold text-slate-700 truncate">{selectedClient.interestZone || '-'}</p>
+                                </div>
+                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
+                                    <Home className="w-5 h-5 mx-auto mb-2 text-slate-400" />
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Inmueble</p>
+                                    <p className="text-sm font-bold text-slate-700 truncate">{selectedClient.propertyType || '-'}</p>
+                                </div>
+                            </div>
+
                             {/* Contact Info */}
                             <div className="space-y-4">
-                                <h3 className="text-xs font-bold text-slate-400 uppercase">Datos de Contacto</h3>
-                                <div className="bg-slate-50 p-4 rounded-xl space-y-3">
-                                    <div className="flex justify-between items-center">
-                                        <div className="flex items-center gap-2 text-sm text-slate-500">
-                                            <Phone className="w-3.5 h-3.5" /> Teléfono
+                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Datos de Contacto</h3>
+                                <div className="bg-white border border-slate-100 shadow-sm rounded-2xl overflow-hidden divide-y divide-slate-100">
+                                    <div className="p-4 flex justify-between items-center group">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl group-hover:scale-110 transition-transform">
+                                                <Phone className="w-4 h-4" />
+                                            </div>
+                                            <span className="text-sm font-medium text-slate-600">WhatsApp / Tel</span>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-sm font-medium font-mono">{selectedClient.phone || '-'}</span>
+                                            <span className="text-sm font-bold text-slate-900 font-mono tracking-tight">{selectedClient.phone || '-'}</span>
                                             {selectedClient.phone && (
                                                 <a
                                                     href={`https://wa.me/${selectedClient.phone.replace(/\D/g, '')}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="p-1 text-emerald-500 hover:bg-emerald-50 rounded"
-                                                    title="Enviar WhatsApp"
+                                                    className="p-2 bg-emerald-500 text-white hover:bg-emerald-600 rounded-lg shadow-sm transition-colors"
                                                 >
                                                     <MessageCircle className="w-4 h-4" />
                                                 </a>
                                             )}
                                         </div>
                                     </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-sm text-slate-500">Email</span>
-                                        <span className="text-sm font-medium">{selectedClient.email || '-'}</span>
+                                    <div className="p-4 flex justify-between items-center group">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-blue-50 text-blue-600 rounded-xl group-hover:scale-110 transition-transform">
+                                                <Mail className="w-4 h-4" />
+                                            </div>
+                                            <span className="text-sm font-medium text-slate-600">Email</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-bold text-slate-900 truncate max-w-[180px]">{selectedClient.email || '-'}</span>
+                                            {selectedClient.email && (
+                                                <a
+                                                    href={`mailto:${selectedClient.email}`}
+                                                    className="p-2 bg-blue-500 text-white hover:bg-blue-600 rounded-lg shadow-sm transition-colors"
+                                                >
+                                                    <Mail className="w-4 h-4" />
+                                                </a>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -317,21 +448,76 @@ export default function ClientsManager() {
                                 className="w-full bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/10 focus:border-brand rounded-lg p-2.5 text-sm"
                                 placeholder="Teléfono"
                             />
-                            <select
-                                value={editingClient?.status || 'lead'}
-                                onChange={e => setEditingClient(p => ({ ...p, status: e.target.value as any }))}
-                                className="w-full bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/10 focus:border-brand rounded-lg p-2.5 text-sm appearance-none"
-                            >
-                                <option value="lead">Lead</option>
-                                <option value="active">Activo</option>
-                                <option value="past">Pasado</option>
-                            </select>
-                            <textarea
-                                value={editingClient?.notes || ''}
-                                onChange={e => setEditingClient(p => ({ ...p, notes: e.target.value }))}
-                                className="w-full bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/10 focus:border-brand rounded-lg p-2.5 text-sm min-h-[100px]"
-                                placeholder="Notas internas..."
-                            />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Tipificación</label>
+                                    <select
+                                        value={editingClient?.type || 'Comprador'}
+                                        onChange={e => setEditingClient(p => ({ ...p, type: e.target.value as any }))}
+                                        className="w-full bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/10 focus:border-brand rounded-lg p-2.5 text-sm appearance-none"
+                                    >
+                                        <option value="Comprador">Comprador</option>
+                                        <option value="Propietario">Propietario</option>
+                                        <option value="Inquilino">Inquilino</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Estado</label>
+                                    <select
+                                        value={editingClient?.status || 'Nuevo'}
+                                        onChange={e => setEditingClient(p => ({ ...p, status: e.target.value as any }))}
+                                        className="w-full bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/10 focus:border-brand rounded-lg p-2.5 text-sm appearance-none"
+                                    >
+                                        <option value="Nuevo">Nuevo</option>
+                                        <option value="En Seguimiento">En Seguimiento</option>
+                                        <option value="Cerrado">Cerrado</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Presupuesto</label>
+                                    <input
+                                        type="text"
+                                        value={editingClient?.budget || ''}
+                                        onChange={e => setEditingClient(p => ({ ...p, budget: e.target.value }))}
+                                        className="w-full bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/10 focus:border-brand rounded-lg p-2.5 text-sm"
+                                        placeholder="Ej: USD 150k"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Tipo de Inmueble</label>
+                                    <input
+                                        type="text"
+                                        value={editingClient?.propertyType || ''}
+                                        onChange={e => setEditingClient(p => ({ ...p, propertyType: e.target.value }))}
+                                        className="w-full bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/10 focus:border-brand rounded-lg p-2.5 text-sm"
+                                        placeholder="Ej: 3 hab, Terraza"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Zona de Interés</label>
+                                <input
+                                    type="text"
+                                    value={editingClient?.interestZone || ''}
+                                    onChange={e => setEditingClient(p => ({ ...p, interestZone: e.target.value }))}
+                                    className="w-full bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/10 focus:border-brand rounded-lg p-2.5 text-sm"
+                                    placeholder="Ej: Barrio Norte, La Plata"
+                                />
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Notas Internas</label>
+                                <textarea
+                                    value={editingClient?.notes || ''}
+                                    onChange={e => setEditingClient(p => ({ ...p, notes: e.target.value }))}
+                                    className="w-full bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/10 focus:border-brand rounded-lg p-2.5 text-sm min-h-[80px]"
+                                    placeholder="Detalles adicionales..."
+                                />
+                            </div>
                             <div className="flex justify-end gap-2 pt-4">
                                 <button
                                     type="button"
