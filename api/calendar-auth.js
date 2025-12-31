@@ -29,8 +29,6 @@ if (!getApps().length) {
     }
 }
 
-const db = getFirestore();
-
 export default async function handler(req, res) {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
@@ -57,8 +55,10 @@ export default async function handler(req, res) {
 
     if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
         console.error("Missing server-side Google OAuth2 credentials");
-        return res.status(500).json({ error: 'Server configuration error' });
+        return res.status(500).json({ error: 'Server configuration error: Missing GOOGLE_CLIENT_ID or SECRET' });
     }
+
+    const db = getFirestore();
 
     const oAuth2Client = new google.auth.OAuth2(
         process.env.GOOGLE_CLIENT_ID,
@@ -89,7 +89,17 @@ export default async function handler(req, res) {
                 tokenData.refresh_token = tokens.refresh_token;
             }
 
-            await db.collection('users').doc(uid).collection('integrations').doc('calendar').set(tokenData, { merge: true });
+            try {
+                await db.collection('users').doc(uid).collection('integrations').doc('calendar').set(tokenData, { merge: true });
+            } catch (dbError) {
+                console.error("Firestore Write Error:", dbError);
+                return res.status(500).json({
+                    success: false,
+                    error: 'Database error',
+                    details: 'El servidor no tiene permisos para escribir en la base de datos. Por favor, asegúrate de haber configurado la variable FIREBASE_SERVICE_ACCOUNT en Vercel con el JSON de tu cuenta de servicio.',
+                    originalError: dbError.message
+                });
+            }
 
             return res.status(200).json({
                 success: true,

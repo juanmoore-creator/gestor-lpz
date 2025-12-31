@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Users, StickyNote, ArrowRight, Plus, Clock, FileText } from 'lucide-react';
+import { Calendar, Users, StickyNote, ArrowRight, Plus, Clock, FileText, Phone, MessageCircle } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { useClients } from '../context/ClientsContext';
 import { useActiveValuation } from '../hooks/useActiveValuation';
 import { useNotes } from '../hooks/useNotes';
 import NotesModal from '../components/modals/NotesModal';
+import { NotesModal as ClientNotesModal } from '../components/NotesModal';
 import ScheduleMeetingModal from '../components/modals/ScheduleMeetingModal';
 import { useAuth } from '../context/AuthContext';
+import type { Client } from '../types';
 
 declare global {
     interface Window {
@@ -43,6 +45,8 @@ const ControlPanel = () => {
     const { notes } = useNotes();
     const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
     const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+    const [selectedClientForNotes, setSelectedClientForNotes] = useState<Client | null>(null);
+    const [isClientNotesModalOpen, setIsClientNotesModalOpen] = useState(false);
 
     // --- Google Calendar Logic (Refactored) ---
     const { user } = useAuth();
@@ -222,11 +226,28 @@ const ControlPanel = () => {
         return dateStr ? new Date(dateStr) : new Date();
     };
 
+    const getStatusBadge = (status: string) => {
+        const statuses: Record<string, React.ReactNode> = {
+            active: <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700">Activo</span>,
+            lead: <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700">Lead</span>,
+            past: <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">Pasado</span>,
+        };
+        return statuses[status] || null;
+    };
+
     return (
         <div className="space-y-8">
             <NotesModal
                 isOpen={isNotesModalOpen}
                 onClose={() => setIsNotesModalOpen(false)}
+            />
+            <ClientNotesModal
+                client={selectedClientForNotes}
+                isOpen={isClientNotesModalOpen}
+                onClose={() => {
+                    setIsClientNotesModalOpen(false);
+                    setSelectedClientForNotes(null);
+                }}
             />
             <ScheduleMeetingModal
                 isOpen={isScheduleModalOpen}
@@ -362,18 +383,55 @@ const ControlPanel = () => {
                     <div className="flex-1 space-y-3">
                         {recentClients.length > 0 ? (
                             recentClients.map(client => (
-                                <div key={client.id} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-lg hover:border-emerald-200 transition-colors group">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-600 shadow-sm">
-                                            {client.name.charAt(0).toUpperCase()}
+                                <div key={client.id} className="p-3 bg-slate-50 border border-slate-100 rounded-lg hover:border-emerald-200 transition-all group">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-600 shadow-sm group-hover:bg-emerald-50 group-hover:border-emerald-200 transition-colors">
+                                                {client.name.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="text-sm font-semibold text-slate-800 truncate">
+                                                        {client.name}
+                                                    </div>
+                                                    {getStatusBadge(client.status)}
+                                                </div>
+                                                <div className="text-[10px] text-slate-400 truncate">
+                                                    {client.phone || client.email || 'Sin contacto'}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <div className="text-sm font-semibold text-slate-800 group-hover:text-emerald-700 transition-colors">
-                                                {client.name}
-                                            </div>
-                                            <div className="text-[10px] text-slate-400">
-                                                {client.phone || client.email || 'Sin contacto'}
-                                            </div>
+                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {client.phone && (
+                                                <>
+                                                    <a
+                                                        href={`tel:${client.phone.replace(/\D/g, '')}`}
+                                                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-md transition-colors shadow-sm bg-slate-100/50"
+                                                        title="Llamar"
+                                                    >
+                                                        <Phone className="w-3.5 h-3.5" />
+                                                    </a>
+                                                    <a
+                                                        href={`https://wa.me/${client.phone.replace(/\D/g, '')}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-white rounded-md transition-colors shadow-sm bg-slate-100/50"
+                                                        title="WhatsApp"
+                                                    >
+                                                        <MessageCircle className="w-3.5 h-3.5" />
+                                                    </a>
+                                                </>
+                                            )}
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedClientForNotes(client);
+                                                    setIsClientNotesModalOpen(true);
+                                                }}
+                                                className="p-1.5 text-slate-400 hover:text-amber-500 hover:bg-white rounded-md transition-colors shadow-sm bg-slate-100/50"
+                                                title="Notas"
+                                            >
+                                                <FileText className="w-3.5 h-3.5" />
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
