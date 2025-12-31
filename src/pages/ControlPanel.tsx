@@ -8,8 +8,6 @@ import { useNotes } from '../hooks/useNotes';
 import NotesModal from '../components/modals/NotesModal';
 import ScheduleMeetingModal from '../components/modals/ScheduleMeetingModal';
 import { useAuth } from '../context/AuthContext';
-import { db } from '../lib/firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 declare global {
     interface Window {
@@ -35,10 +33,8 @@ interface CalendarEvent {
     htmlLink: string;
 }
 
-const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_CLIENT_ID';
 const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || 'YOUR_API_KEY';
 const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
-const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
 
 const ControlPanel = () => {
     const navigate = useNavigate();
@@ -48,50 +44,44 @@ const ControlPanel = () => {
     const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
     const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
-    // --- Google Calendar Logic (Inlined) ---
+    // --- Google Calendar Logic (Refactored) ---
     const { user } = useAuth();
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [isSignedIn, setIsSignedIn] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isGapiLoaded, setIsGapiLoaded] = useState(false);
-    const [isGisLoaded, setIsGisLoaded] = useState(false);
-    const [tokenClient, setTokenClient] = useState<any>(null);
     const [, setError] = useState<string | null>(null);
 
-    // DEBUG: Log credentials to verify
-    useEffect(() => {
-        console.log("ControlPanel: Mounting and initializing Google Services");
-        console.log("ControlPanel: Origin:", window.location.origin);
-        console.log("ControlPanel: CLIENT_ID:", CLIENT_ID);
-        console.log("ControlPanel: API_KEY:", API_KEY ? (API_KEY.substring(0, 5) + "...") : 'MISSING');
-    }, []);
-
-    // Initial Load of Scripts
+    // Initial Load of Scripts - Minimal just for visual rendering if needed by GAPI, 
+    // but mainly we rely on 'google' global being present for identity services.
     useEffect(() => {
         const loadGapi = () => {
-            const script = document.createElement('script');
-            script.src = 'https://apis.google.com/js/api.js';
-            script.onload = () => {
+            // ... existing load logic for gapi.client is still useful for making requests
+            // even if auth is handled via new flow
+            if (!window.gapi) {
+                const script = document.createElement('script');
+                script.src = 'https://apis.google.com/js/api.js';
+                script.onload = () => {
+                    window.gapi.load('client', initializeGapiClient);
+                };
+                document.body.appendChild(script);
+            } else if (!window.gapi.client) {
                 window.gapi.load('client', initializeGapiClient);
-            };
-            document.body.appendChild(script);
+            } else {
+                setIsGapiLoaded(true);
+            }
         };
 
         const loadGis = () => {
-            const script = document.createElement('script');
-            script.src = 'https://accounts.google.com/gsi/client';
-            script.onload = () => {
-                setIsGisLoaded(true);
-            };
-            document.body.appendChild(script);
+            if (!window.google) {
+                const script = document.createElement('script');
+                script.src = 'https://accounts.google.com/gsi/client';
+                document.body.appendChild(script);
+            }
         };
 
-        if (!window.gapi) loadGapi();
-        else if (!window.gapi.client) window.gapi.load('client', initializeGapiClient);
-        else setIsGapiLoaded(true);
-
-        if (!window.google) loadGis();
-        else setIsGisLoaded(true);
+        loadGapi();
+        loadGis();
     }, []);
 
     const initializeGapiClient = async () => {
@@ -107,82 +97,79 @@ const ControlPanel = () => {
         }
     };
 
-    // Prepare Token Client
-    useEffect(() => {
-        if (isGisLoaded && isGapiLoaded) {
-            console.log("ControlPanel: Initialization Token Client with", { CLIENT_ID, SCOPES });
-            const client = (window as any).google.accounts.oauth2.initTokenClient({
-                client_id: CLIENT_ID,
-                scope: SCOPES,
-                callback: async (resp: any) => {
-                    if (resp.error !== undefined) {
-                        throw resp;
-                    }
-                    if (user?.uid && resp.access_token) {
-                        const expiresIn = resp.expires_in || 3599;
-                        const expirationTime = Date.now() + (expiresIn * 1000);
-                        try {
-                            await setDoc(doc(db, 'users', user.uid, 'integrations', 'calendar'), {
-                                access_token: resp.access_token,
-                                expires_at: expirationTime,
-                                updated_at: new Date().toISOString()
-                            }, { merge: true });
-                        } catch (e) {
-                            console.error("Error saving token to firestore", e);
-                        }
-                    }
-                    setIsSignedIn(true);
-                    listUpcomingEvents();
-                },
-            });
-            setTokenClient(client);
-        }
-    }, [isGisLoaded, isGapiLoaded, user]);
-
     // Restore Session
     useEffect(() => {
-        const restoreSession = async () => {
+        const attemptRestore = async () => {
             if (!user?.uid || !isGapiLoaded) return;
+
             try {
-                const docRef = doc(db, 'users', user.uid, 'integrations', 'calendar');
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    if (data.access_token && data.expires_at > Date.now()) {
-                        window.gapi.client.setToken({ access_token: data.access_token });
+                // Check if we have a valid token (refreshes if needed)
+                import('../services/calendarService').then(async ({ calendarService }) => {
+                    const accessToken = await calendarService.getValidAccessToken(user.uid);
+                    if (accessToken) {
+                        window.gapi.client.setToken({ access_token: accessToken });
                         setIsSignedIn(true);
                         listUpcomingEvents();
                     } else {
                         setIsSignedIn(false);
                     }
-                }
+                    setIsLoading(false);
+                });
             } catch (e) {
                 console.error("Error restoring session", e);
-            } finally {
                 setIsLoading(false);
             }
         };
 
         if (isGapiLoaded && user) {
-            restoreSession();
+            attemptRestore();
         }
     }, [user, isGapiLoaded]);
 
-    const handleAuthClick = () => {
-        if (!tokenClient) {
-            console.error("TokenClient is null when clicking button");
-            return;
+    const handleAuthClick = async () => {
+        if (!user?.uid) return;
+
+        // Dynamic import to avoid circular dep issues during init if any
+        const { calendarService } = await import('../services/calendarService');
+
+        const client = calendarService.initTokenClient({
+            uid: user.uid,
+            onSuccess: async () => {
+                const accessToken = await calendarService.getValidAccessToken(user.uid);
+                if (accessToken && window.gapi) {
+                    window.gapi.client.setToken({ access_token: accessToken });
+                    setIsSignedIn(true);
+                    listUpcomingEvents();
+                }
+            },
+            onError: (err) => {
+                console.error("Auth failed", err);
+                setError("Error en la autenticación");
+            }
+        });
+
+        if (client) {
+            client.requestCode();
         }
-        console.log("ControlPanel: Requesting access token...");
-        tokenClient.requestAccessToken({ prompt: 'consent' });
     };
 
     const listUpcomingEvents = async () => {
-        if (!isGapiLoaded || !isSignedIn) return;
+        if (!isGapiLoaded || !user?.uid) return;
 
         setIsLoading(true);
         setError(null);
         try {
+            // Ensure we have valid auth before call
+            const { calendarService } = await import('../services/calendarService');
+            const hasAuth = await calendarService.ensureClientAuth(user.uid);
+
+            if (!hasAuth) {
+                setIsSignedIn(false);
+                setIsLoading(false);
+                return;
+            }
+
+            // Proceed with request
             const now = new Date();
             const future = new Date();
             future.setDate(now.getDate() + 30);
@@ -199,8 +186,10 @@ const ControlPanel = () => {
             };
             const response = await window.gapi.client.calendar.events.list(request);
             setEvents(response.result.items);
+            setIsSignedIn(true); // Re-confirm signed in state
         } catch (err: any) {
             if (err.status === 401) {
+                // Retry once potentially or just sign out
                 setIsSignedIn(false);
             } else {
                 console.error("Error fetching events", err);

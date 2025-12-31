@@ -3,8 +3,9 @@ import { Clock, Loader2, ExternalLink, AlertCircle, Plus, X, Save, ChevronLeft, 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../lib/firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { generateMonthGrid, getMonthName, isSameDay } from '../utils/calendarUtils';
+import { calendarService } from '../services/calendarService';
 
 declare global {
     interface Window {
@@ -30,10 +31,8 @@ interface CalendarEvent {
     htmlLink: string;
 }
 
-const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_CLIENT_ID';
 const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || 'YOUR_API_KEY';
 const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
-const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
 
 export default function CalendarPage() {
     const { user } = useAuth();
@@ -42,8 +41,6 @@ export default function CalendarPage() {
     const [isSignedIn, setIsSignedIn] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isGapiLoaded, setIsGapiLoaded] = useState(false);
-    const [isGisLoaded, setIsGisLoaded] = useState(false);
-    const [tokenClient, setTokenClient] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
 
     // Calendar UI State
@@ -69,89 +66,36 @@ export default function CalendarPage() {
 
     // --- Google Calendar Logic ---
 
+    // --- Google Calendar Logic ---
+
+    // Initial Load of Scripts - Minimal
     useEffect(() => {
         const loadGapi = () => {
-            const script = document.createElement('script');
-            script.src = 'https://apis.google.com/js/api.js';
-            script.onload = () => {
+            if (!window.gapi) {
+                const script = document.createElement('script');
+                script.src = 'https://apis.google.com/js/api.js';
+                script.onload = () => {
+                    window.gapi.load('client', initializeGapiClient);
+                };
+                document.body.appendChild(script);
+            } else if (!window.gapi.client) {
                 window.gapi.load('client', initializeGapiClient);
-            };
-            document.body.appendChild(script);
+            } else {
+                setIsGapiLoaded(true);
+            }
         };
 
         const loadGis = () => {
-            const script = document.createElement('script');
-            script.src = 'https://accounts.google.com/gsi/client';
-            script.onload = () => {
-                setIsGisLoaded(true);
-            };
-            document.body.appendChild(script);
+            if (!window.google) {
+                const script = document.createElement('script');
+                script.src = 'https://accounts.google.com/gsi/client';
+                document.body.appendChild(script);
+            }
         };
 
         loadGapi();
         loadGis();
     }, []);
-
-    useEffect(() => {
-        if (isGisLoaded && isGapiLoaded) {
-            const client = (window as any).google.accounts.oauth2.initTokenClient({
-                client_id: CLIENT_ID,
-                scope: SCOPES,
-                callback: async (resp: any) => {
-                    if (resp.error !== undefined) {
-                        throw resp;
-                    }
-                    if (user?.uid && resp.access_token) {
-                        const expiresIn = resp.expires_in || 3599;
-                        const expirationTime = Date.now() + (expiresIn * 1000);
-                        try {
-                            await setDoc(doc(db, 'users', user.uid, 'integrations', 'calendar'), {
-                                access_token: resp.access_token,
-                                expires_at: expirationTime,
-                                updated_at: new Date().toISOString()
-                            }, { merge: true });
-                        } catch (e) {
-                            console.error("Error saving token to firestore", e);
-                        }
-                    }
-                    setIsSignedIn(true);
-                    await listUpcomingEvents();
-                    await listSidebarEvents(); // Fetch sidebar events on login
-                },
-            });
-            setTokenClient(client);
-        }
-    }, [isGisLoaded, isGapiLoaded, user]);
-
-
-
-    useEffect(() => {
-        const restoreSession = async () => {
-            if (!user?.uid || !isGapiLoaded) return;
-            try {
-                const docRef = doc(db, 'users', user.uid, 'integrations', 'calendar');
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    if (data.access_token && data.expires_at > Date.now()) {
-                        window.gapi.client.setToken({ access_token: data.access_token });
-                        setIsSignedIn(true);
-                        await listUpcomingEvents();
-                        await listSidebarEvents(); // Fetch sidebar events on restore
-                    } else {
-                        setIsSignedIn(false);
-                    }
-                }
-            } catch (e) {
-                console.error("Error restoring session", e);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        if (isGapiLoaded && user) {
-            restoreSession();
-        }
-    }, [user, isGapiLoaded]);
 
     const initializeGapiClient = async () => {
         try {
@@ -165,9 +109,51 @@ export default function CalendarPage() {
         }
     };
 
+    // Restore Session
+    useEffect(() => {
+        const attemptRestore = async () => {
+            if (!user?.uid || !isGapiLoaded) return;
+            try {
+                const accessToken = await calendarService.getValidAccessToken(user.uid);
+                if (accessToken) {
+                    window.gapi.client.setToken({ access_token: accessToken });
+                    setIsSignedIn(true);
+                    await listUpcomingEvents();
+                    await listSidebarEvents();
+                } else {
+                    setIsSignedIn(false);
+                }
+            } catch (e) {
+                console.error("Error restoring session", e);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        if (isGapiLoaded && user) {
+            attemptRestore();
+        }
+    }, [user, isGapiLoaded]);
+
     const handleAuthClick = () => {
-        if (!tokenClient) return;
-        tokenClient.requestAccessToken({ prompt: 'consent' });
+        if (!user?.uid) return;
+        const client = calendarService.initTokenClient({
+            uid: user.uid,
+            onSuccess: async () => {
+                const accessToken = await calendarService.getValidAccessToken(user.uid);
+                if (accessToken && window.gapi) {
+                    window.gapi.client.setToken({ access_token: accessToken });
+                    setIsSignedIn(true);
+                    await listUpcomingEvents();
+                    await listSidebarEvents();
+                }
+            },
+            onError: (err) => {
+                console.error("Auth error", err);
+                setError("No se pudo conectar con Google.");
+            }
+        });
+        if (client) client.requestCode();
     };
 
     const handleSignoutClick = () => {
@@ -189,6 +175,16 @@ export default function CalendarPage() {
     };
 
     const listUpcomingEvents = async () => {
+        // Auth check happens inside or before call
+        if (!isGapiLoaded || !user?.uid) return;
+
+        // Ensure valid token
+        const hasAuth = await calendarService.ensureClientAuth(user.uid);
+        if (!hasAuth) {
+            setIsSignedIn(false);
+            return;
+        }
+
         setIsLoading(true);
         setError(null);
         try {
@@ -226,8 +222,14 @@ export default function CalendarPage() {
 
     // Separate fetch for sidebar (Next 30 days always)
     const listSidebarEvents = async () => {
-        if (!isSignedIn || !isGapiLoaded) return;
+        // We'll rely on the fact that if we are here, we probably have auth, but let's double check efficiently
+        // If ensureClientAuth fails, we likely caught it in main listUpcomingEvents or UI will show signed out
+        if (!user?.uid || !isGapiLoaded) return;
+
         try {
+            const hasAuth = await calendarService.ensureClientAuth(user.uid);
+            if (!hasAuth) return;
+
             const now = new Date();
             const future = new Date();
             future.setDate(now.getDate() + 30);
@@ -275,9 +277,14 @@ export default function CalendarPage() {
 
     const handleSaveEvent = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!user?.uid) return;
+
         setIsSavingEvent(true);
         setError(null);
         try {
+            const hasAuth = await calendarService.ensureClientAuth(user.uid);
+            if (!hasAuth) throw new Error("Sesión expirada. Por favor recarga.");
+
             // 1. Forzamos el formato local puro YYYY-MM-DDTHH:mm:00 sin offset
             const formatToLocalISO = (dateString: string) => {
                 if (!dateString) return '';
@@ -340,9 +347,13 @@ export default function CalendarPage() {
 
     const handleDeleteEvent = async (eventId: string) => {
         if (!confirm('¿Estás seguro de que quieres eliminar este evento?')) return;
+        if (!user?.uid) return;
 
         setError(null);
         try {
+            const hasAuth = await calendarService.ensureClientAuth(user.uid);
+            if (!hasAuth) throw new Error("Sesión expirada.");
+
             await window.gapi.client.calendar.events.delete({
                 'calendarId': 'primary',
                 'eventId': eventId
@@ -481,7 +492,7 @@ export default function CalendarPage() {
 
     // --- Render ---
 
-    if (isLoading && !isGisLoaded) {
+    if (isLoading) {
         return (
             <div className="flex h-full items-center justify-center p-12">
                 <Loader2 className="h-8 w-8 animate-spin text-brand" />
@@ -518,7 +529,7 @@ export default function CalendarPage() {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={handleAuthClick}
-                        disabled={!isGisLoaded || isLoading}
+                        disabled={isLoading}
                         className="w-full text-base font-bold text-white bg-brand p-4 rounded-xl hover:bg-brand/90 transition-all flex items-center justify-center gap-3 shadow-lg shadow-brand/20"
                     >
                         <img src="https://calendar.google.com/googlecalendar/images/favicon_v2014_1.ico" alt="" className="w-5 h-5 brightness-0 invert" />
