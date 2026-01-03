@@ -123,7 +123,7 @@ const InmueblesPage = () => {
                         placeholder="Buscar por dirección..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm"
+                        className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-base md:text-sm"
                     />
                 </div>
                 <div className="flex items-center gap-3 w-full sm:w-auto">
