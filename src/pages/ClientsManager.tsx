@@ -15,7 +15,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 
 export default function ClientsManager() {
     const { clients, addClient, updateClient, deleteClient } = useClients();
-    const { inmuebles, getInmueblesByPropietario } = useInmuebles();
+    const { inmuebles, getInmueblesByPropietario, updateInmueble } = useInmuebles();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -25,9 +25,13 @@ export default function ClientsManager() {
     const [statusFilter, setStatusFilter] = useState('all');
     const [roleFilter, setRoleFilter] = useState<'all' | 'Comprador' | 'Propietario' | 'Inquilino'>('all');
 
-    // Modal State
+    // Generic Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingClient, setEditingClient] = useState<Partial<Client> | null>(null);
+
+    // Propietario-Specific State
+    const [propertyAction, setPropertyAction] = useState<'existing' | 'none' | 'new'>('none');
+    const [selectedPropertyId, setSelectedPropertyId] = useState('');
 
     // Notes Modal State
     const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
@@ -91,19 +95,15 @@ export default function ClientsManager() {
         e.preventDefault();
         if (!editingClient?.name) return;
         try {
-            // Ensure roles array is populated from legacy type if needed, or from form
-            // For this version we will map the single select 'type' to 'roles' for backward compatibility
-            // but ideally we should allow multi-select in the UI.
-            // For now, let's just save 'type' and 'roles' as an array containing that type.
             const selectedType = editingClient.type || 'Comprador';
-            const roles = [selectedType]; // Simple mapping for now
+            const roles = [selectedType];
 
             const clientData: any = {
                 name: editingClient.name || '',
                 email: editingClient.email || '',
                 phone: editingClient.phone || '',
                 status: (editingClient.status as any) || 'Nuevo',
-                type: selectedType, // Keep legacy field for now
+                type: selectedType,
                 roles: roles,
                 budget: editingClient.budget || '',
                 interestZone: editingClient.interestZone || '',
@@ -111,16 +111,36 @@ export default function ClientsManager() {
                 notes: editingClient.notes || ''
             };
 
+            let newClientId = editingClient.id;
+
             if (editingClient.id) {
                 await updateClient(editingClient.id, clientData);
             } else {
-                await addClient(clientData);
+                newClientId = await addClient(clientData);
             }
+
+            // Handle Property Linking for Owners
+            if (selectedType === 'Propietario') {
+                if (propertyAction === 'existing' && selectedPropertyId && newClientId) {
+                    await updateInmueble(selectedPropertyId, { propietarioId: newClientId });
+                } else if (propertyAction === 'new' && newClientId) {
+                    setIsModalOpen(false);
+                    setEditingClient(null);
+                    navigate('/app/inmuebles/new', { state: { propietarioId: newClientId } });
+                    return;
+                }
+            }
+
             setIsModalOpen(false); setEditingClient(null);
         } catch (error) { console.error("Error saving client", error); }
     };
 
-    const openNewClientModal = () => { setEditingClient({ status: 'Nuevo', type: 'Comprador' }); setIsModalOpen(true); };
+    const openNewClientModal = () => {
+        setEditingClient({ status: 'Nuevo', type: 'Comprador' });
+        setPropertyAction('none');
+        setSelectedPropertyId('');
+        setIsModalOpen(true);
+    };
     const openEditClientModal = (client: Client) => { setEditingClient(client); setIsModalOpen(true); };
 
     useEffect(() => {
@@ -490,39 +510,106 @@ export default function ClientsManager() {
                                 </div>
                             </div>
                             {/* Rest of inputs */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Presupuesto</label>
-                                    <input
-                                        type="text"
-                                        value={editingClient?.budget || ''}
-                                        onChange={e => setEditingClient(p => ({ ...p, budget: e.target.value }))}
-                                        className="w-full bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/10 focus:border-brand rounded-lg p-2.5 text-sm"
-                                        placeholder="Ej: USD 150k"
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Tipo de Inmueble</label>
-                                    <input
-                                        type="text"
-                                        value={editingClient?.propertyType || ''}
-                                        onChange={e => setEditingClient(p => ({ ...p, propertyType: e.target.value }))}
-                                        className="w-full bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/10 focus:border-brand rounded-lg p-2.5 text-sm"
-                                        placeholder="Ej: 3 hab, Terraza"
-                                    />
-                                </div>
-                            </div>
 
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Zona de Interés</label>
-                                <input
-                                    type="text"
-                                    value={editingClient?.interestZone || ''}
-                                    onChange={e => setEditingClient(p => ({ ...p, interestZone: e.target.value }))}
-                                    className="w-full bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/10 focus:border-brand rounded-lg p-2.5 text-sm"
-                                    placeholder="Ej: Barrio Norte, La Plata"
-                                />
-                            </div>
+
+                            {/* Dynamic Fields based on Type */}
+                            {editingClient?.type === 'Propietario' ? (
+                                <div className="space-y-3 pt-2 border-t border-slate-100 mt-2">
+                                    <h4 className="text-xs font-bold text-slate-900 uppercase">Propiedad</h4>
+
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setPropertyAction('existing')}
+                                            className={`p-2 rounded-lg text-xs font-medium border text-center transition-all ${propertyAction === 'existing' ? 'bg-brand/10 border-brand text-brand' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                        >
+                                            Vincular Existente
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setPropertyAction('new')}
+                                            className={`p-2 rounded-lg text-xs font-medium border text-center transition-all ${propertyAction === 'new' ? 'bg-brand/10 border-brand text-brand' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                        >
+                                            Cargar Nueva
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setPropertyAction('none')}
+                                            className={`p-2 rounded-lg text-xs font-medium border text-center transition-all ${propertyAction === 'none' ? 'bg-brand/10 border-brand text-brand' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                        >
+                                            Sin Propiedad
+                                        </button>
+                                    </div>
+
+                                    {propertyAction === 'existing' && (
+                                        <div className="mt-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Seleccionar Inmueble</label>
+                                                <select
+                                                    value={selectedPropertyId}
+                                                    onChange={(e) => setSelectedPropertyId(e.target.value)}
+                                                    className="w-full bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/10 focus:border-brand rounded-lg p-2.5 text-sm"
+                                                >
+                                                    <option value="">Seleccione una propiedad...</option>
+                                                    {inmuebles
+                                                        .filter(i => !i.propietarioId) // Only show unassigned properties
+                                                        .map(inmueble => (
+                                                            <option key={inmueble.id} value={inmueble.id}>
+                                                                {inmueble.direccion} - {inmueble.operacion}
+                                                            </option>
+                                                        ))
+                                                    }
+                                                </select>
+                                                <p className="text-[10px] text-slate-400 px-1">Solo se muestran propiedades sin propietario asignado.</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {propertyAction === 'new' && (
+                                        <div className="p-3 bg-blue-50 text-blue-700 rounded-lg text-xs mt-2 flex items-start gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                                            <div className="mt-0.5"><TrendingUp className="w-4 h-4" /></div> {/* Reusing an icon */}
+                                            <p>Al guardar el cliente, serás redirigido al editor para cargar los datos de la nueva propiedad inmediatamente.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                /* Buyer / Tenant Fields */
+                                <div className="space-y-4 pt-2 border-t border-slate-100 mt-2">
+                                    <h4 className="text-xs font-bold text-slate-900 uppercase">Preferencias de Búsqueda</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Presupuesto</label>
+                                            <input
+                                                type="text"
+                                                value={editingClient?.budget || ''}
+                                                onChange={e => setEditingClient(p => ({ ...p, budget: e.target.value }))}
+                                                className="w-full bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/10 focus:border-brand rounded-lg p-2.5 text-sm"
+                                                placeholder="Ej: USD 150k"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Tipo de Inmueble</label>
+                                            <input
+                                                type="text"
+                                                value={editingClient?.propertyType || ''}
+                                                onChange={e => setEditingClient(p => ({ ...p, propertyType: e.target.value }))}
+                                                className="w-full bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/10 focus:border-brand rounded-lg p-2.5 text-sm"
+                                                placeholder="Ej: 3 hab, Terraza"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Zona de Interés</label>
+                                        <input
+                                            type="text"
+                                            value={editingClient?.interestZone || ''}
+                                            onChange={e => setEditingClient(p => ({ ...p, interestZone: e.target.value }))}
+                                            className="w-full bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-brand/10 focus:border-brand rounded-lg p-2.5 text-sm"
+                                            placeholder="Ej: Barrio Norte, La Plata"
+                                        />
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="space-y-1">
                                 <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Notas Internas</label>
@@ -551,8 +638,9 @@ export default function ClientsManager() {
                             </div>
                         </form>
                     </div>
-                </div>
-            )}
+                </div >
+            )
+            }
 
             <NotesModal
                 isOpen={isNotesModalOpen}
@@ -562,6 +650,6 @@ export default function ClientsManager() {
                 }}
                 client={notesClient}
             />
-        </div>
+        </div >
     );
 }

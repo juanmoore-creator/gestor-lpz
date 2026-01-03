@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, Save, Home, DollarSign, Ruler, Bed, Bath, Activity, FileText } from 'lucide-react';
 import { useInmuebles } from '../hooks/useInmuebles';
 import { useInmueble } from '../hooks/useInmueble';
@@ -7,6 +7,7 @@ import { Card } from '../components/ui/Card';
 
 export default function PropertyEditorPage() {
     const navigate = useNavigate();
+    const location = useLocation();
     const { id } = useParams(); // If present, editing
     const isEditing = Boolean(id);
 
@@ -25,7 +26,8 @@ export default function PropertyEditorPage() {
             habitaciones: 0,
             banos: 0,
             cocheras: 0
-        }
+        },
+        propietarioId: ''
     });
 
     useEffect(() => {
@@ -42,10 +44,17 @@ export default function PropertyEditorPage() {
                     habitaciones: existingInmueble.caracteristicas?.habitaciones || 0,
                     banos: existingInmueble.caracteristicas?.banos || 0,
                     cocheras: existingInmueble.caracteristicas?.cocheras || 0
-                }
+                },
+                propietarioId: existingInmueble.propietarioId || ''
             });
+        } else if (!isEditing) {
+            // Check for passed state when creating new
+            const state = location.state as { propietarioId?: string } | null;
+            if (state?.propietarioId) {
+                setFormData(prev => ({ ...prev, propietarioId: state.propietarioId || '' }));
+            }
         }
-    }, [isEditing, existingInmueble]);
+    }, [isEditing, existingInmueble, location.state]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

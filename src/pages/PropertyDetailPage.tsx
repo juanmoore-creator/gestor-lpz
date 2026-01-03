@@ -192,7 +192,10 @@ const PropertyDetailPage = () => {
                                     </div>
                                 </div>
 
-                                <button className="w-full mt-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-brand-dark transition-all shadow-sm active:scale-95">
+                                <button
+                                    onClick={() => navigate(`/app/inmuebles/${inmuebleId}/edit`)}
+                                    className="w-full mt-6 py-3 bg-brand text-white font-bold rounded-xl hover:bg-brand-dark transition-all shadow-sm active:scale-95"
+                                >
                                     Editar Propiedad
                                 </button>
                             </Card>

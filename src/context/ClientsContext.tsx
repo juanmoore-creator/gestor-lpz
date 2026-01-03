@@ -9,7 +9,7 @@ import type { Client } from '../types/index';
 
 interface ClientsContextType {
     clients: Client[];
-    addClient: (client: Omit<Client, 'id' | 'createdAt' | 'lastActivity'>) => Promise<void>;
+    addClient: (client: Omit<Client, 'id' | 'createdAt' | 'lastActivity'>) => Promise<string>;
     updateClient: (id: string, updates: Partial<Client>) => Promise<void>;
     deleteClient: (id: string) => Promise<void>;
     getClientById: (id: string) => Client | undefined;
@@ -44,7 +44,7 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
     }, [user]);
 
     const addClient = async (clientData: Omit<Client, 'id' | 'createdAt' | 'lastActivity'>) => {
-        if (!user?.uid || !db) return;
+        if (!user?.uid || !db) throw new Error("No authenticated user");
 
         const newClient: Client = {
             id: crypto.randomUUID(), // Optimistic ID
@@ -53,15 +53,13 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
             lastActivity: Date.now()
         };
 
-        // Optimistic update (optional since snapshot is fast, but good UX)
-        // setClients(prev => [newClient, ...prev]);
-
         const clientsPath = `users/${user.uid}/clients`;
         // Use a new doc reference for auto-ID or specified ID
         const docRef = doc(collection(db, clientsPath));
         newClient.id = docRef.id; // Use Firestore ID
 
         await setDoc(docRef, newClient);
+        return newClient.id;
     };
 
     const updateClient = async (id: string, updates: Partial<Client>) => {
