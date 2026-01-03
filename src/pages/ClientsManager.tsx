@@ -191,7 +191,7 @@ export default function ClientsManager() {
                                 onClick={() => setRoleFilter(roleFilter === role ? 'all' : role)}
                                 className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${roleFilter === role ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                             >
-                                {role}s
+                                {role === 'Comprador' ? 'Compradores' : `${role}s`}
                             </button>
                         ))}
                     </div>
