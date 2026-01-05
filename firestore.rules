@@ -25,5 +25,12 @@ service cloud.firestore {
     match /whatsapp_conversations/{document=**} {
       allow read, write: if request.auth != null;
     }
+    // Explicitly allow common data paths if they are ever moved to root (defensive)
+    match /comparables/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+    match /target/{document=**} {
+      allow read, write: if request.auth != null;
+    }
   }
 }
