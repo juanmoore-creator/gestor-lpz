@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Files, Upload, Trash2, FileText, Download, X, ExternalLink } from 'lucide-react';
+import { Files, Upload, Trash2, FileText, X, ExternalLink } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { useDocuments } from '../../hooks/useDocuments';
 import { formatDate } from '../../utils/format';

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, MapPin, ArrowRight, Clock, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { Home, MapPin, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { Inmueble } from '../../types';
 
