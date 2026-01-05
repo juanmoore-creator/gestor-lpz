@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, onAuthStateChanged } from 'firebase/auth';
 import {
     initializeFirestore,
     persistentLocalCache,
@@ -41,6 +41,28 @@ try {
 
     auth = getAuth(app);
     console.log(`Firebase Initialized for project: ${projectId} (Modern Persistence Enabled)`);
+
+    // Diagnostic listener
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            console.log("Firebase Auth State: Logged In", {
+                uid: user.uid,
+                uidHasSlash: user.uid.includes('/'),
+                email: user.email,
+                projectId: app.options.projectId,
+                authDomain: app.options.authDomain,
+                apiKeyPrefix: app.options.apiKey ? `${app.options.apiKey.substring(0, 5)}...` : 'MISSING',
+                database: (db as any)._databaseId?.database || '(default)'
+            });
+
+            if (user.uid.includes('/')) {
+                console.error("CRITICAL! User UID contains a slash. This will break standard Firestore rules.");
+            }
+        } else {
+            console.log("Firebase Auth State: Logged Out");
+        }
+    });
+
 } catch (e) {
     console.error(`Firebase Initialization Failed for project ${projectId}:`, e);
 }
