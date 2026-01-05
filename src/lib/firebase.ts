@@ -11,6 +11,8 @@ const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID || FALLBACK_PROJECT_I
 
 if (!import.meta.env.VITE_FIREBASE_PROJECT_ID) {
     console.warn(`Firebase: VITE_FIREBASE_PROJECT_ID missing, falling back to ${FALLBACK_PROJECT_ID}`);
+} else if (import.meta.env.VITE_FIREBASE_PROJECT_ID.endsWith('_id')) {
+    console.error("Firebase: CRITICAL ERROR! El ID del proyecto termina en '_id'. Esto es probablemente un error en las variables de entorno de Vercel (copiaste el nombre de un campo en lugar de su valor). Asegúrate de que el ID sea exactamente 'ttasaciones-5ce4d'.");
 }
 
 const firebaseConfig = {

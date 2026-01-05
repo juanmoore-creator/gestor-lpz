@@ -4,22 +4,37 @@ import {
     collection, onSnapshot, query, orderBy, deleteDoc, doc, addDoc, updateDoc
 } from 'firebase/firestore';
 import type { Inmueble } from '../types/index';
+import { useAuth } from '../context/AuthContext';
 
 export function useInmuebles() {
+    const { user } = useAuth();
     const [inmuebles, setInmuebles] = useState<Inmueble[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!db) return;
+        if (!db) {
+            console.warn("useInmuebles: Database not initialized");
+            return;
+        }
 
-        // Query properties ordered by creation date
+        if (!user) {
+            console.log("useInmuebles: No authenticated user, skipping fetch");
+            setInmuebles([]);
+            setIsLoading(false);
+            return;
+        }
+
+        console.log(`useInmuebles: Starting snapshot for user ${user.uid} on 'inmuebles' collection`);
+        setIsLoading(true);
+
         const q = query(
             collection(db, 'inmuebles'),
             orderBy('fechaCreacion', 'desc')
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
+            console.log(`useInmuebles: Received snapshot with ${snapshot.docs.length} properties`);
             const items = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
@@ -27,13 +42,16 @@ export function useInmuebles() {
             setInmuebles(items);
             setIsLoading(false);
         }, (err) => {
-            console.error("Error fetching inmuebles:", err);
+            console.error("useInmuebles: Error fetching properties:", err);
             setError("Error al cargar los inmuebles.");
             setIsLoading(false);
         });
 
-        return () => unsubscribe();
-    }, []);
+        return () => {
+            console.log("useInmuebles: Unsubscribing from 'inmuebles'");
+            unsubscribe();
+        };
+    }, [user]);
 
     const deleteInmueble = async (id: string) => {
         if (!db) return;
