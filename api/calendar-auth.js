@@ -7,23 +7,23 @@ if (!getApps().length) {
     try {
         const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
             ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-            : undefined;
+            : null;
+
+        const projectId = serviceAccount?.project_id ||
+            process.env.FIREBASE_PROJECT_ID ||
+            process.env.VITE_FIREBASE_PROJECT_ID;
 
         if (serviceAccount) {
             initializeApp({
                 credential: cert(serviceAccount),
-                projectId: 'ttasaciones-5ce4d'
-            });
-        } else if (process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID) {
-            initializeApp({
-                projectId: process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID
+                projectId: projectId
             });
         } else {
-            // Fallback to the known project ID
             initializeApp({
-                projectId: 'ttasaciones-5ce4d'
+                projectId: projectId
             });
         }
+        console.log(`Firebase Admin (CalendarAuth) initialized for project: ${projectId}`);
     } catch (error) {
         console.error("Firebase Admin initialization error:", error);
     }

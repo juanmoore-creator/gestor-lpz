@@ -31,8 +31,10 @@ export default async function handler(req, res) {
 
     try {
         // 1. Send message via Meta Graph API
+        // Note: Currently using 'type: text' for direct chat. 
+        // For 'type: template', the body structure changes to use the 'template' field.
         const response = await fetch(
-            `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
+            `https://graph.facebook.com/v22.0/${phoneNumberId}/messages`,
             {
                 method: 'POST',
                 headers: {

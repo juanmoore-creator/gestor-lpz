@@ -4,10 +4,18 @@ import admin from 'firebase-admin';
 
 if (!admin.apps.length) {
     try {
+        const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT ?
+            JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT) : null;
+
+        const projectId = serviceAccount?.project_id ||
+            process.env.VITE_FIREBASE_PROJECT_ID ||
+            process.env.FIREBASE_PROJECT_ID;
+
         admin.initializeApp({
-            credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
-            projectId: 'ttasaciones-5ce4d' // From firebase.ts
+            credential: serviceAccount ? admin.credential.cert(serviceAccount) : admin.credential.applicationDefault(),
+            projectId: projectId
         });
+        console.log(`Firebase Admin (WhatsAppDB) initialized for project: ${projectId}`);
     } catch (error) {
         console.error('Firebase Admin Init Error:', error);
     }

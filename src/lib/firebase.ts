@@ -38,10 +38,9 @@ try {
     });
 
     auth = getAuth(app);
-
-    console.log("Firebase Initialized (Modern Persistence Enabled)");
+    console.log(`Firebase Initialized for project: ${projectId} (Modern Persistence Enabled)`);
 } catch (e) {
-    console.error("Firebase Initialization Failed:", e);
+    console.error(`Firebase Initialization Failed for project ${projectId}:`, e);
 }
 
 export { db, auth, googleProvider };
