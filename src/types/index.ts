@@ -121,3 +121,45 @@ export interface Client {
     lastActivity: number;
     notes?: string;
 }
+
+// Interfaz para la sección de Tasaciones
+export interface Valuation {
+    id: string;
+    propertyId: string;
+    date: any; // Using any for Timestamp compatibility or number as in SavedValuation
+    amount: number;
+    currency: 'USD' | 'ARS';
+    notes?: string;
+}
+
+// Interfaz para la sección de Visitas
+export interface Visit {
+    id: string;
+    propertyId: string;
+    date: any;
+    visitorName: string;
+    visitorContact?: string;
+    notes?: string;
+}
+
+// Interfaz para la sección de Ofertas
+export interface Offer {
+    id: string;
+    propertyId: string;
+    date: any;
+    amount: number;
+    currency: 'USD' | 'ARS';
+    offererName: string;
+    offererContact?: string;
+    status: 'pending' | 'accepted' | 'rejected';
+}
+
+// Interfaz para la sección de Documentación
+export interface PropertyDocument {
+    id: string;
+    propertyId: string;
+    name: string;
+    url: string;
+    uploadedAt: any;
+}
+

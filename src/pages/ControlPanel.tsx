@@ -269,22 +269,25 @@ const ControlPanel = () => {
             {/* QUICK ACTIONS BAR */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                 <button
-                    onClick={handleCreateNewValuation}
-                    className="flex items-center justify-center gap-2 px-4 py-3 bg-brand text-white rounded-lg shadow-md hover:bg-brand-dark transition-colors font-semibold text-lg"
+                    onClick={() => navigate('/app/inmuebles')}
+                    className="group flex items-center justify-center gap-3 px-6 py-4 bg-white text-slate-700 rounded-xl shadow-sm border border-slate-200 hover:border-brand/30 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 font-bold text-lg"
                 >
-                    <Plus className="w-5 h-5" /> Nueva Tasación
+                    <FileText className="w-6 h-6 text-brand group-hover:scale-110 transition-transform duration-200" />
+                    Ver Inmuebles
                 </button>
                 <button
                     onClick={() => navigate('/app/clients', { state: { openNewClient: true } })}
-                    className="flex items-center justify-center gap-2 px-4 py-3 bg-white text-slate-700 rounded-lg shadow-md border border-slate-200 hover:bg-slate-50 transition-colors font-semibold text-lg"
+                    className="group flex items-center justify-center gap-3 px-6 py-4 bg-white text-slate-700 rounded-xl shadow-sm border border-slate-200 hover:border-brand/30 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 font-bold text-lg"
                 >
-                    <Users className="w-5 h-5" /> Nuevo Cliente
+                    <Users className="w-6 h-6 text-brand group-hover:scale-110 transition-transform duration-200" />
+                    Nuevo Cliente
                 </button>
                 <button
-                    onClick={() => navigate('/app/inmuebles')}
-                    className="flex items-center justify-center gap-2 px-4 py-3 bg-white text-slate-700 rounded-lg shadow-md border border-slate-200 hover:bg-slate-50 transition-colors font-semibold text-lg"
+                    onClick={handleCreateNewValuation}
+                    className="group flex items-center justify-center gap-3 px-6 py-4 bg-white text-slate-700 rounded-xl shadow-sm border border-slate-200 hover:border-brand/30 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 font-bold text-lg"
                 >
-                    <FileText className="w-5 h-5" /> Ver Inmuebles
+                    <Plus className="w-6 h-6 text-brand group-hover:scale-110 transition-transform duration-200" />
+                    Nueva Tasación
                 </button>
             </div>
 

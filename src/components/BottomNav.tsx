@@ -5,7 +5,8 @@ import {
     Users,
     Home,
     CalendarDays,
-    FolderOpen
+    FolderOpen,
+    MessageSquare
 } from 'lucide-react';
 
 const BottomNav = () => {
@@ -35,6 +36,11 @@ const BottomNav = () => {
             to: '/app/archivos',
             label: 'Archivos',
             icon: FolderOpen
+        },
+        {
+            to: '/app/whatsapp',
+            label: 'WhatsApp',
+            icon: MessageSquare
         },
     ];
 

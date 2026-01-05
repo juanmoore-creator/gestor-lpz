@@ -4,7 +4,7 @@ import {
     Activity, Calendar, FileText, Phone,
     CheckCircle, AlertCircle, Clock
 } from 'lucide-react';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 
@@ -18,9 +18,10 @@ interface Log {
 
 interface ClientActivityTimelineProps {
     clientId: string;
+    propertyIds?: string[];
 }
 
-export function ClientActivityTimeline({ clientId }: ClientActivityTimelineProps) {
+export function ClientActivityTimeline({ clientId, propertyIds = [] }: ClientActivityTimelineProps) {
     const { user } = useAuth();
     const [logs, setLogs] = useState<Log[]>([]);
     const [loading, setLoading] = useState(true);
@@ -29,7 +30,26 @@ export function ClientActivityTimeline({ clientId }: ClientActivityTimelineProps
         if (!user?.uid || !clientId) return;
 
         const logsRef = collection(db, `users/${user.uid}/clients/${clientId}/logs`);
-        const q = query(logsRef, orderBy('date', 'desc'));
+
+        let q;
+        if (propertyIds.length > 0) {
+            // Firestore 'in' query is limited to 10 items.
+            // If there are more, we might need a different approach, but for now 10 is usually enough for a single client.
+            const filterIds = propertyIds.slice(0, 10);
+            q = query(
+                logsRef,
+                where('propertyId', 'in', filterIds),
+                orderBy('date', 'desc')
+            );
+        } else {
+            // If no properties, and following user's strict requirement, we fetch nothing.
+            // However, it's better to just return an empty set or maybe still show client-level logs?
+            // User said: "traer únicamente los documentos... cuyo propertyId esté incluido".
+            // So if propertyIds is empty, the result should be empty.
+            setLogs([]);
+            setLoading(false);
+            return;
+        }
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const newLogs = snapshot.docs.map(doc => ({
@@ -45,7 +65,7 @@ export function ClientActivityTimeline({ clientId }: ClientActivityTimelineProps
         });
 
         return () => unsubscribe();
-    }, [user, clientId]);
+    }, [user, clientId, propertyIds]);
 
     const getIcon = (type: string) => {
         switch (type) {

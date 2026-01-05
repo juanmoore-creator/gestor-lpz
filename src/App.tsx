@@ -16,6 +16,7 @@ const PropertyEditorPage = React.lazy(() => import('./pages/PropertyEditorPage')
 const PropertyDetailPage = React.lazy(() => import('./pages/PropertyDetailPage'));
 const CalendarPage = React.lazy(() => import('./pages/CalendarPage'));
 const FilesPage = React.lazy(() => import('./pages/FilesPage'));
+const WhatsappAdminPage = React.lazy(() => import('./pages/WhatsappAdminPage'));
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -51,6 +52,7 @@ function App() {
                 <Route path="clients" element={<ClientsManager />} />
                 <Route path="archivos" element={<FilesPage />} />
                 <Route path="calendar" element={<CalendarPage />} />
+                <Route path="whatsapp" element={<WhatsappAdminPage />} />
               </Route>
 
               <Route path="*" element={<Navigate to="/" replace />} />

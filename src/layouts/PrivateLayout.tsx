@@ -17,7 +17,7 @@ const PrivateLayout = () => {
     };
 
     const navLinks = [
-        { to: '/app', text: 'Panel de Control', icon: LayoutDashboard },
+        { to: '/app', text: 'Panel de Control', icon: LayoutDashboard, end: true, primary: true },
         { to: '/app/inmuebles', text: 'Inmuebles', icon: Home },
         { to: '/app/clients', text: 'Clientes', icon: Users },
         { to: '/app/calendar', text: 'Calendario', icon: CalendarDays },
@@ -25,7 +25,7 @@ const PrivateLayout = () => {
     ];
 
     const linkClass = "flex items-center gap-3 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors";
-    const activeLinkClass = "bg-slate-100 text-slate-900";
+    const activeLinkClass = "bg-brand/10 text-brand shadow-sm";
 
 
     return (
@@ -51,7 +51,22 @@ const PrivateLayout = () => {
                             <NavLink
                                 key={link.to}
                                 to={link.to}
-                                className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : ''}`}
+                                end={link.end}
+                                className={({ isActive }) => {
+                                    const baseClass = link.primary
+                                        ? "flex items-center gap-3 px-4 py-2 text-sm font-bold rounded-lg transition-all"
+                                        : linkClass;
+
+                                    if (isActive) {
+                                        return link.primary
+                                            ? `${baseClass} bg-brand text-white shadow-md scale-105`
+                                            : `${baseClass} ${activeLinkClass}`;
+                                    }
+
+                                    return link.primary
+                                        ? `${baseClass} text-brand border border-brand/20 hover:bg-brand/5`
+                                        : baseClass;
+                                }}
                             >
                                 <link.icon className="w-4 h-4" />
                                 <span>{link.text}</span>
@@ -86,8 +101,23 @@ const PrivateLayout = () => {
                                 <NavLink
                                     key={link.to}
                                     to={link.to}
+                                    end={link.end}
                                     onClick={() => setIsMenuOpen(false)}
-                                    className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : ''}`}
+                                    className={({ isActive }) => {
+                                        const baseClass = link.primary
+                                            ? "flex items-center gap-3 px-4 py-2 text-sm font-bold rounded-lg transition-all"
+                                            : linkClass;
+
+                                        if (isActive) {
+                                            return link.primary
+                                                ? `${baseClass} bg-brand text-white shadow-md`
+                                                : `${baseClass} ${activeLinkClass}`;
+                                        }
+
+                                        return link.primary
+                                            ? `${baseClass} text-brand border border-brand/20`
+                                            : baseClass;
+                                    }}
                                 >
                                     <link.icon className="w-5 h-5" />
                                     <span>{link.text}</span>

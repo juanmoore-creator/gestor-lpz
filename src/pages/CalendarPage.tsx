@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Clock, Loader2, ExternalLink, AlertCircle, Plus, X, Save, ChevronLeft, ChevronRight, Trash2, Pencil, Calendar as CalendarIcon, MapPin, MoreVertical, RotateCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
@@ -36,6 +37,8 @@ const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/
 
 export default function CalendarPage() {
     const { user } = useAuth();
+    const location = useLocation();
+    const navigate = useNavigate();
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]); // New state for sidebar
     const [isSignedIn, setIsSignedIn] = useState(false);
@@ -367,7 +370,7 @@ export default function CalendarPage() {
         }
     };
 
-    const handleCreateNewClick = (date?: Date) => {
+    const handleCreateNewClick = (date?: Date, initialSummary?: string) => {
         const startDate = date || new Date();
         const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1 hour later
 
@@ -378,7 +381,7 @@ export default function CalendarPage() {
         };
 
         setNewEvent({
-            summary: '',
+            summary: initialSummary || '',
             description: '',
             location: '',
             startDateTime: toLocalISO(startDate),
@@ -388,6 +391,16 @@ export default function CalendarPage() {
         setIsModalOpen(true);
         setIsDayDetailsOpen(false); // Close day details if open
     };
+
+    // Handle initial schedule trigger from ClientsManager
+    useEffect(() => {
+        if (isSignedIn && isGapiLoaded && location.state?.scheduleFor) {
+            const clientName = location.state.scheduleFor;
+            handleCreateNewClick(new Date(), clientName);
+            // Clear state after consumption
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, [isSignedIn, isGapiLoaded, location.state, navigate]);
 
     const handleEditClick = (event: CalendarEvent) => {
         const start = event.start.dateTime ? new Date(event.start.dateTime) : new Date(event.start.date || '');
