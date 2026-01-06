@@ -1,11 +1,11 @@
 import React from 'react';
-import { Home, MapPin, ArrowRight, DollarSign, ShieldCheck } from 'lucide-react';
+import { Home, MapPin, ArrowRight, DollarSign, ShieldCheck, Tag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { Inmueble, Client } from '../../types';
 
 interface PropertyClientCardProps {
     property?: Inmueble;
-    client?: Client;
+    client?: Client & { properties?: Inmueble[] };
 }
 
 export const PropertyClientCard: React.FC<PropertyClientCardProps> = ({ property, client }) => {
@@ -71,24 +71,34 @@ export const PropertyClientCard: React.FC<PropertyClientCardProps> = ({ property
                     </div>
                 );
             }
-            // For 'Propietario' or others we usually show the assigned property card itself or info
+            if (clientType === 'Propietario') {
+                const mainProp = client.properties && client.properties.length > 0 ? client.properties[0] : null;
+                return (
+                    <div className="grid grid-cols-3 gap-2 w-full">
+                        <div className="bg-slate-50 p-2 rounded-xl text-center border border-slate-100">
+                            <MapPin className="w-3.5 h-3.5 mx-auto mb-1 text-brand/70" />
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Dirección</p>
+                            <p className="text-xs font-bold text-slate-700 truncate" title={mainProp?.direccion}>{mainProp?.direccion || '-'}</p>
+                        </div>
+                        <div className="bg-slate-50 p-2 rounded-xl text-center border border-slate-100">
+                            <DollarSign className="w-3.5 h-3.5 mx-auto mb-1 text-emerald-500" />
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Valor</p>
+                            <p className="text-xs font-bold text-slate-700 truncate">
+                                {mainProp?.precio ? `${mainProp.precio.moneda} ${mainProp.precio.valor.toLocaleString()}` : '-'}
+                            </p>
+                        </div>
+                        <div className="bg-slate-50 p-2 rounded-xl text-center border border-slate-100 flex flex-col items-center justify-center">
+                            <Tag className="w-3.5 h-3.5 mx-auto mb-1 text-slate-400" />
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Estado</p>
+                            {mainProp ? getStatusBadge(mainProp.status) : <span className="text-xs font-bold text-slate-700">-</span>}
+                        </div>
+                    </div>
+                );
+            }
             return null;
         };
 
-        return (
-            <div className="p-4 bg-white border border-slate-200 rounded-2xl">
-                <div className="flex justify-between items-start mb-4">
-                    <div>
-                        <h4 className="font-bold text-slate-900">{client.name}</h4>
-                        <div className="flex gap-1 mt-1">
-                            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-[9px] font-bold text-slate-600 uppercase">{clientType}</span>
-                        </div>
-                    </div>
-                    {getStatusBadge(client.status)}
-                </div>
-                {renderClientInfo()}
-            </div>
-        );
+        return renderClientInfo();
     }
 
     if (!property) return null;

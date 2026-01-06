@@ -1,53 +1,94 @@
-TECNOLOGÍAS UTILIZADAS EN ESTE PROYECTO
+TECNOLOGÍAS Y FUNCIONALIDADES DEL PROYECTO
 
-1. React (v19)
-   - Uso: Biblioteca principal de JavaScript para construir la interfaz de usuario.
-   - Función: Permite crear componentes reutilizables y gestionar el estado de la aplicación.
+## FRONTEND
 
-2. Vite
-   - Uso: Herramienta de compilación y servidor de desarrollo.
-   - Función: Proporciona un entorno de desarrollo extremadamente rápido y optimiza la construcción final para producción.
+1.  **React (v19)**
+    -   Uso: Biblioteca principal de JavaScript para construir la interfaz de usuario.
+    -   Función: Permite crear componentes reutilizables y gestionar el estado de la aplicación.
 
-3. TypeScript
-   - Uso: Lenguaje de programación.
-   - Función: Añade tipado estático a JavaScript, lo que ayuda a prevenir errores y mejora la experiencia de desarrollo con autocompletado y documentación integrada.
+2.  **Vite**
+    -   Uso: Herramienta de compilación y servidor de desarrollo.
+    -   Función: Proporciona un entorno de desarrollo rápido y optimiza la construcción final para producción.
 
-4. Tailwind CSS
-   - Uso: Framework de CSS.
-   - Función: Facilita el estilizado rápido de componentes mediante clases utilitarias predefinidas directamente en el HTML/JSX.
+3.  **TypeScript**
+    -   Uso: Lenguaje de programación.
+    -   Función: Añade tipado estático a JavaScript para prevenir errores y mejorar la autocompletado.
 
-5. Firebase
-   - Uso: Plataforma backend "como servicio" (BaaS).
-   - Función: Se utiliza para la base de datos (Firestore), y potencialmente autenticación y hosting. Permite almacenar datos de las tasaciones y usuarios.
+4.  **Tailwind CSS**
+    -   Uso: Framework de CSS para estilizado rápido.
+    -   Función: Facilita el diseño mediante clases utilitarias directamente en el HTML/JSX.
+    -   Complementos: `clsx` y `tailwind-merge` para gestionar clases condicionales y conflictos.
 
-6. ImageKit
-   - Uso: Gestión de activos digitales (DAM) y CDN de imágenes.
-   - Función: Optimización, transformación y entrega rápida de imágenes en la aplicación.
+5.  **React Router (react-router-dom)**
+    -   Uso: Enrutamiento del lado del cliente.
+    -   Función: Gestiona la navegación entre las páginas de la aplicación sin recargar el navegador.
 
-7. React Router (react-router-dom)
-   - Uso: Enrutamiento del lado del cliente.
-   - Función: Gestiona la navegación entre diferentes vistas o páginas de la aplicación sin recargar el navegador.
+6.  **Framer Motion**
+    -   Uso: Biblioteca de animaciones.
+    -   Función: Permite crear transiciones y animaciones fluidas en componentes React.
 
-8. Framer Motion
-   - Uso: Biblioteca de animaciones.
-   - Función: Permite crear transiciones y animaciones fluidas y complejas en los componentes React.
+7.  **Recharts**
+    -   Uso: Visualización de datos.
+    -   Función: Creación de gráficos estadísticos y visualizaciones de datos.
 
-9. html2canvas & jspdf
-   - Uso: Generación de documentos.
-   - Función: `html2canvas` captura partes de la pantalla como imágenes, y `jspdf` se utiliza para generar archivos PDF descargables (ej. reportes de tasación).
+8.  **Google Maps API Wrappers**
+    -   Uso: Integración de mapas.
+    -   Función: Se utiliza (`@react-google-maps/api`) para mostrar mapas interactivos, como en la previsualización de ubicaciones de propiedades.
 
-10. Recharts
-    - Uso: Visualización de datos.
-    - Función: Biblioteca para crear gráficos estadísticos y visualizaciones de datos dentro de React.
+9.  **Radix UI**
+    -   Uso: Componentes de UI.
+    -   Función: Proporciona primitivas de componentes accesibles y no estilizadas, como las pestañas (`@radix-ui/react-tabs`).
 
-11. Lucide React
-    - Uso: Iconografía.
-    - Función: Proporciona una colección de iconos vectoriales ligeros y consistentes.
+10. **Lucide React**
+    -   Uso: Iconografía.
+    -   Función: Colección de iconos vectoriales ligeros y consistentes.
 
-12. PapaParse
-    - Uso: Procesamiento de datos.
-    - Función: Permite leer y analizar archivos CSV fácilmente dentro del navegador.
+11. **date-fns**
+    -   Uso: Manipulación de fechas.
+    -   Función: Librería avanzada para parsear, formatear y operar con fechas y horas.
 
-13. ESLint
-    - Uso: Calidad de código.
-    - Función: Analiza el código para encontrar problemas, asegurar consistencia y evitar errores comunes.
+## GENERACIÓN DE DOCUMENTOS Y DATOS
+
+12. **html2canvas & jspdf**
+    -   Uso: Generación de PDFs a partir de HTML.
+    -   Función: `html2canvas` captura componentes como imágenes y `jspdf` los integra en archivos PDF para crear reportes.
+
+13. **PapaParse**
+    -   Uso: Procesamiento de archivos CSV.
+    -   Función: Permite analizar datos CSV directamente en el navegador, usado para importaciones.
+
+## BACKEND (API Serverless)
+
+14. **Node.js**
+    -   Uso: Entorno de ejecución para el backend.
+    -   Función: Se utiliza para crear las funciones serverless (en la carpeta `api/`) que manejan la lógica de negocio segura.
+
+15. **Firebase (Cliente y Admin SDK)**
+    -   Uso: Plataforma BaaS (Backend as a Service).
+    -   Función: Se usa Firestore como base de datos en tiempo real (cliente) y el **Admin SDK** en el backend para operaciones con privilegios.
+
+16. **Google APIs (googleapis)**
+    -   Uso: Integración con servicios de Google.
+    -   Función: El cliente de Node.js se usa en el backend para autenticar y interactuar con **Google Calendar** (agendar visitas) y **Google Drive** (subir archivos).
+
+17. **ImageKit (Cliente y SDK de Node.js)**
+    -   Uso: Gestión de activos digitales (imágenes).
+    -   Función: Se usa el SDK de cliente para subir imágenes y el de Node.js para la autenticación segura en el backend.
+
+18. **Integración con WhatsApp**
+    -   Uso: Comunicación con clientes.
+    -   Función: El backend (`api/whatsapp/`) está preparado para enviar mensajes y recibir notificaciones (webhooks) a través de la API de WhatsApp.
+
+19. **Formidable**
+    -   Uso: Procesamiento de formularios en Node.js.
+    -   Función: Permite gestionar la subida de archivos en las funciones del backend.
+
+## CALIDAD DE CÓDIGO Y DEPLOYMENT
+
+20. **ESLint**
+    -   Uso: Linter de código.
+    -   Función: Analiza el código para encontrar problemas, asegurar consistencia y aplicar buenas prácticas.
+
+21. **Vite PWA (Progressive Web App)**
+    -   Uso: Mejora de la aplicación web.
+    -   Función: El plugin `vite-plugin-pwa` configura la aplicación para que pueda ser "instalada" en dispositivos y funcionar sin conexión.
