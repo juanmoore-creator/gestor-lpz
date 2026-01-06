@@ -86,7 +86,10 @@ export const ConversationList: React.FC<ConversationListProps> = ({
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                 onKeyDown={(e) => e.key === 'Enter' && handleStartNewChat()}
                             />
-                            <p className="text-[10px] text-slate-400 italic">Incluya código de país y área sin el signo +</p>
+                            <p className="text-[10px] text-slate-400 leading-relaxed">
+                                <span className="font-bold text-blue-500">Importante:</span> Incluye código de país.<br />
+                                Para Argentina móvil: <span className="font-mono bg-slate-100 px-1">54 + 9 + área + número</span>
+                            </p>
                         </div>
                         <button
                             onClick={handleStartNewChat}

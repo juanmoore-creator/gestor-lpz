@@ -58,9 +58,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             }
 
             setNewMessage('');
-        } catch (err) {
-            console.error(err);
-            alert('Error al enviar mensaje');
+        } catch (err: any) {
+            console.error('Send error:', err);
+            const errorMessage = err.message || 'Error al enviar mensaje';
+            alert(`Error: ${errorMessage}`);
         } finally {
             setSending(false);
         }

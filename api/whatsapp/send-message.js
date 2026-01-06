@@ -15,7 +15,12 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
 
-    const { to, text } = req.body;
+    let { to, text } = req.body;
+
+    // Sanitize phone number: remove all non-digits
+    if (to) {
+        to = to.replace(/\D/g, '');
+    }
 
     if (!to || !text) {
         return res.status(400).json({ error: 'Missing "to" or "text" fields' });
