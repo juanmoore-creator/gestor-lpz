@@ -33,11 +33,6 @@ const BottomNav = () => {
             icon: CalendarDays
         },
         {
-            to: '/app/archivos',
-            label: 'Archivos',
-            icon: FolderOpen
-        },
-        {
             to: '/app/whatsapp',
             label: 'WhatsApp',
             icon: MessageSquare

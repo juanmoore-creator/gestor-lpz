@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import {
     Users, Search, Filter, Phone, MoveRight as ArrowRight, X, MessageCircle, Pencil, History,
-    TrendingUp, Activity, UserPlus, Trash2, FileText, Mail, Calendar, DollarSign, MapPin, Home,
+    TrendingUp, Activity, UserPlus, Trash2, FileText, Mail, Calendar, Home,
     UserCheck, Clock, CheckCircle2
 } from 'lucide-react';
 import { ClientActivityTimeline } from '../components/ClientActivityTimeline';
@@ -233,23 +233,9 @@ export default function ClientsManager() {
                             {getStatusBadge(client.status)}
                         </div>
 
-                        {/* Schematic Data */}
-                        <div className="px-5 pb-5 grid grid-cols-3 gap-2">
-                            <div className="bg-slate-50 p-2 rounded-xl text-center border border-slate-100">
-                                <DollarSign className="w-3.5 h-3.5 mx-auto mb-1 text-emerald-500" />
-                                <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mb-0.5 whitespace-nowrap overflow-hidden text-ellipsis">Presupuesto</p>
-                                <p className="text-xs font-bold text-slate-700 truncate">{client.budget || '-'}</p>
-                            </div>
-                            <div className="bg-slate-50 p-2 rounded-xl text-center border border-slate-100">
-                                <MapPin className="w-3.5 h-3.5 mx-auto mb-1 text-brand/70" />
-                                <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mb-0.5 whitespace-nowrap overflow-hidden text-ellipsis">Zona</p>
-                                <p className="text-xs font-bold text-slate-700 truncate">{client.interestZone || '-'}</p>
-                            </div>
-                            <div className="bg-slate-50 p-2 rounded-xl text-center border border-slate-100">
-                                <Home className="w-3.5 h-3.5 mx-auto mb-1 text-slate-400" />
-                                <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mb-0.5 whitespace-nowrap overflow-hidden text-ellipsis">Inmueble</p>
-                                <p className="text-xs font-bold text-slate-700 truncate">{client.propertyType || '-'}</p>
-                            </div>
+                        {/* Schematic Data via PropertyClientCard */}
+                        <div className="px-5 pb-5">
+                            <PropertyClientCard client={client} />
                         </div>
 
                         {/* Quick Actions Bar */}
@@ -334,24 +320,8 @@ export default function ClientsManager() {
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-6 space-y-8">
-                            {/* Key Stats Grid */}
-                            <div className="grid grid-cols-3 gap-3">
-                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
-                                    <DollarSign className="w-5 h-5 mx-auto mb-2 text-emerald-500" />
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Presupuesto</p>
-                                    <p className="text-sm font-bold text-slate-700 truncate">{selectedClient.budget || '-'}</p>
-                                </div>
-                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
-                                    <MapPin className="w-5 h-5 mx-auto mb-2 text-brand/70" />
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Zona</p>
-                                    <p className="text-sm font-bold text-slate-700 truncate">{selectedClient.interestZone || '-'}</p>
-                                </div>
-                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
-                                    <Home className="w-5 h-5 mx-auto mb-2 text-slate-400" />
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Inmueble</p>
-                                    <p className="text-sm font-bold text-slate-700 truncate">{selectedClient.propertyType || '-'}</p>
-                                </div>
-                            </div>
+                            {/* Key Stats via PropertyClientCard */}
+                            <PropertyClientCard client={selectedClient} />
 
                             {/* Contact Info */}
                             <div className="space-y-4">

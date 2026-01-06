@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Outlet, useNavigate, NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, Home, FolderOpen, Users, CalendarDays, LayoutDashboard, Menu, X } from 'lucide-react';
+import { LogOut, Home, FolderOpen, Users, CalendarDays, LayoutDashboard, Menu, X, MessageSquare } from 'lucide-react';
 
 
 import BottomNav from '../components/BottomNav';
@@ -22,6 +22,7 @@ const PrivateLayout = () => {
         { to: '/app/clients', text: 'Clientes', icon: Users },
         { to: '/app/calendar', text: 'Calendario', icon: CalendarDays },
         { to: '/app/archivos', text: 'Archivos', icon: FolderOpen },
+        { to: '/app/whatsapp', text: 'WhatsApp', icon: MessageSquare },
     ];
 
     const linkClass = "flex items-center gap-3 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors";
