@@ -5,7 +5,6 @@ import {
     Users,
     Home,
     CalendarDays,
-    FolderOpen,
     MessageSquare
 } from 'lucide-react';
 
