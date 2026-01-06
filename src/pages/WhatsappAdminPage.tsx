@@ -1,13 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ConversationList } from '../components/whatsapp/ConversationList';
 import { ChatWindow } from '../components/whatsapp/ChatWindow';
 import { useAuth } from '../context/AuthContext';
 import { useWhatsappConversations } from '../hooks/useWhatsappConversations';
+import { useSearchParams } from 'react-router-dom';
 
 const WhatsappAdminPage: React.FC = () => {
     const { user } = useAuth();
+    const [searchParams] = useSearchParams();
+    const phoneParam = searchParams.get('phone');
+
     const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
     const { conversations } = useWhatsappConversations(user?.uid);
+
+    // Auto-select conversation based on phone parameter
+    useEffect(() => {
+        if (phoneParam && conversations.length > 0) {
+            const cleanPhone = phoneParam.replace(/\D/g, '');
+            const found = conversations.find(c => c.contactPhoneNumber.replace(/\D/g, '') === cleanPhone);
+            if (found && found.id !== selectedConversationId) {
+                setSelectedConversationId(found.id);
+            }
+        }
+    }, [phoneParam, conversations, selectedConversationId]);
 
     const selectedConv = conversations.find(c => c.id === selectedConversationId);
 

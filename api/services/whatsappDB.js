@@ -63,7 +63,7 @@ export async function saveMessageToConversation({ from, text, direction, timesta
         await doc.ref.update({
             lastMessageTimestamp: admin.firestore.Timestamp.fromMillis(timestamp),
             lastMessageText: text,
-            unread: direction === 'incoming' ? true : conversationData.unread
+            unread: direction === 'incoming' ? true : false
         });
     }
 

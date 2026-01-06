@@ -8,11 +8,14 @@ import { doc, deleteDoc } from 'firebase/firestore';
 import type { Offer } from '../../types';
 
 
+import { useNavigate } from 'react-router-dom';
+
 interface OffersTabProps {
     propertyId: string;
 }
 
 const OffersTab: React.FC<OffersTabProps> = ({ propertyId }) => {
+    const navigate = useNavigate();
     const { offers, loading, addOffer } = useOffers(propertyId);
     const [showModal, setShowModal] = useState(false);
     const [newOffer, setNewOffer] = useState({
@@ -98,15 +101,13 @@ const OffersTab: React.FC<OffersTabProps> = ({ propertyId }) => {
 
                             <div className="flex items-center gap-2 w-full sm:w-auto">
                                 {offer.offererContact && (
-                                    <a
-                                        href={`https://wa.me/${offer.offererContact.replace(/\D/g, '')}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                    <button
+                                        onClick={() => navigate(`/app/whatsapp?phone=${(offer.offererContact || '').replace(/\D/g, '')}`)}
                                         className="flex-1 sm:flex-none px-4 py-2 bg-emerald-50 text-emerald-600 font-bold rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-2"
                                     >
                                         <MessageCircle className="w-4 h-4" />
                                         Contactar
-                                    </a>
+                                    </button>
                                 )}
                                 <button
                                     onClick={() => handleDelete(offer.id)}

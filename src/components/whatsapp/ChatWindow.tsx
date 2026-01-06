@@ -136,6 +136,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                                     "flex items-center justify-end gap-1 mt-1",
                                     isOutgoing ? "text-blue-100" : "text-slate-400"
                                 )}>
+                                    {!isOutgoing && (
+                                        <button
+                                            onClick={() => setNewMessage(`Reprobando a: "${msg.text.slice(0, 30)}${msg.text.length > 30 ? '...' : ''}"\n`)}
+                                            className="mr-auto text-[10px] font-bold hover:underline opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            Responder
+                                        </button>
+                                    )}
                                     <span className="text-[10px]">
                                         {format(msg.timestamp.toDate(), 'HH:mm', { locale: es })}
                                     </span>

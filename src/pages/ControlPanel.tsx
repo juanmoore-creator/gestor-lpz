@@ -418,15 +418,13 @@ const ControlPanel = () => {
                                                     >
                                                         <Phone className="w-3.5 h-3.5" />
                                                     </a>
-                                                    <a
-                                                        href={`https://wa.me/${client.phone.replace(/\D/g, '')}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
+                                                    <button
+                                                        onClick={() => navigate(`/app/whatsapp?phone=${client.phone.replace(/\D/g, '')}`)}
                                                         className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-white rounded-md transition-colors shadow-sm bg-slate-100/50"
                                                         title="WhatsApp"
                                                     >
                                                         <MessageCircle className="w-3.5 h-3.5" />
-                                                    </a>
+                                                    </button>
                                                 </>
                                             )}
                                             <button

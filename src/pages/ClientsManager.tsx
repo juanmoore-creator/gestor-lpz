@@ -242,16 +242,16 @@ export default function ClientsManager() {
                         <div className="mt-auto border-t border-slate-100 bg-slate-50/50 p-2 flex items-center gap-2">
                             <div className="flex gap-1 flex-1">
                                 {client.phone && (
-                                    <a
-                                        href={`https://wa.me/${client.phone.replace(/\D/g, '')}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            navigate(`/app/whatsapp?phone=${client.phone.replace(/\D/g, '')}`);
+                                        }}
                                         className="p-2 bg-white text-emerald-600 hover:text-emerald-700 border border-slate-200 rounded-lg transition-colors shadow-sm"
                                         title="WhatsApp"
-                                        onClick={(e) => e.stopPropagation()}
                                     >
                                         <MessageCircle className="w-4 h-4" />
-                                    </a>
+                                    </button>
                                 )}
                                 {client.email && (
                                     <a
@@ -338,14 +338,12 @@ export default function ClientsManager() {
                                         <div className="flex items-center gap-2">
                                             <span className="text-sm font-bold text-slate-900 font-mono tracking-tight">{selectedClient.phone || '-'}</span>
                                             {selectedClient.phone && (
-                                                <a
-                                                    href={`https://wa.me/${selectedClient.phone.replace(/\D/g, '')}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
+                                                <button
+                                                    onClick={() => navigate(`/app/whatsapp?phone=${selectedClient.phone.replace(/\D/g, '')}`)}
                                                     className="p-2 bg-emerald-500 text-white hover:bg-emerald-600 rounded-lg shadow-sm transition-colors"
                                                 >
                                                     <MessageCircle className="w-4 h-4" />
-                                                </a>
+                                                </button>
                                             )}
                                         </div>
                                     </div>
