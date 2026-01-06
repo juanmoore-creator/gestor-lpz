@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useWhatsappMessages } from '../../hooks/useWhatsappMessages';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Send, User, ChevronLeft, Search, MoreVertical, CheckCheck } from 'lucide-react';
+import { Send, User, ChevronLeft, Search, MoreVertical, CheckCheck, X } from 'lucide-react';
 import { clsx } from 'clsx';
 
 interface ChatWindowProps {
@@ -21,14 +21,21 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     const { messages, loading } = useWhatsappMessages(conversationId);
     const [newMessage, setNewMessage] = useState('');
     const [sending, setSending] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
+
+    // Filter messages based on search query
+    const filteredMessages = messages.filter(msg =>
+        msg.text.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     // Auto scroll to bottom when new messages arrive
     useEffect(() => {
-        if (scrollRef.current) {
+        if (scrollRef.current && !isSearching) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
-    }, [messages]);
+    }, [messages, isSearching]);
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -59,7 +66,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         }
     };
 
-    if (!conversationId) {
+    if (!conversationId && !phoneNumber) {
         return (
             <div className="hidden md:flex flex-col items-center justify-center h-full bg-slate-50 text-slate-400 p-8 text-center">
                 <div className="w-20 h-20 bg-white rounded-3xl shadow-sm flex items-center justify-center mb-6">
@@ -67,7 +74,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                         onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                 </div>
                 <h3 className="text-xl font-bold text-slate-800 mb-2">Bienvenido a la Central de WhatsApp</h3>
-                <p className="max-w-xs text-sm">Selecciona una conversación del panel izquierdo para comenzar a gestionar tus chats en tiempo real.</p>
+                <p className="max-w-xs text-sm">Selecciona una conversación del panel izquierdo o inicia un nuevo chat para comenzar.</p>
             </div>
         );
     }
@@ -75,32 +82,67 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     return (
         <div className="flex flex-col h-full bg-[#f0f2f5] relative">
             {/* Header */}
-            <header className="bg-white px-4 py-2 flex items-center justify-between border-b border-slate-200 z-10 shadow-sm">
-                <div className="flex items-center gap-3">
-                    <button onClick={onBack} className="md:hidden p-2 -ml-2 text-slate-600">
-                        <ChevronLeft size={24} />
-                    </button>
-                    <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
-                        <User size={20} />
+            <header className="bg-white px-4 py-2 flex flex-col border-b border-slate-200 z-10 shadow-sm transition-all duration-300">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <button onClick={onBack} className="md:hidden p-2 -ml-2 text-slate-600">
+                            <ChevronLeft size={24} />
+                        </button>
+                        <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                            <User size={20} />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-slate-900 leading-tight truncate max-w-[150px] md:max-w-none">
+                                {contactName || phoneNumber}
+                            </h3>
+                            <p className="text-[10px] text-green-500 font-semibold flex items-center gap-1">
+                                <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                                {conversationId ? 'En línea' : 'Nuevo Chat'}
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="font-bold text-slate-900 leading-tight truncate max-w-[150px] md:max-w-none">
-                            {contactName || phoneNumber}
-                        </h3>
-                        <p className="text-[10px] text-green-500 font-semibold flex items-center gap-1">
-                            <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                            En línea
-                        </p>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => {
+                                setIsSearching(!isSearching);
+                                if (isSearching) setSearchQuery('');
+                            }}
+                            className={clsx(
+                                "p-2 transition-colors",
+                                isSearching ? "text-blue-600 bg-blue-50 rounded-lg" : "text-slate-400 hover:text-slate-600"
+                            )}
+                        >
+                            <Search size={20} />
+                        </button>
+                        <button className="p-2 text-slate-400 hover:text-slate-600 transition-colors">
+                            <MoreVertical size={20} />
+                        </button>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <button className="p-2 text-slate-400 hover:text-slate-600 transition-colors">
-                        <Search size={20} />
-                    </button>
-                    <button className="p-2 text-slate-400 hover:text-slate-600 transition-colors">
-                        <MoreVertical size={20} />
-                    </button>
-                </div>
+
+                {isSearching && (
+                    <div className="mt-2 pb-1 animate-in slide-in-from-top-2 duration-200">
+                        <div className="relative">
+                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                                autoFocus
+                                type="text"
+                                placeholder="Buscar en el chat..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                            />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery('')}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                >
+                                    <X size={16} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )}
             </header>
 
             {/* Messages Area */}
@@ -109,13 +151,20 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 scroll-smooth"
                 style={{ backgroundImage: 'radial-gradient(#d1d1d1 0.5px, transparent 0.5px)', backgroundSize: '20px 20px' }}
             >
-                {loading && messages.length === 0 && (
+                {loading && messages.length === 0 && conversationId && (
                     <div className="flex justify-center py-10">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
                     </div>
                 )}
 
-                {messages.map((msg) => {
+                {filteredMessages.length === 0 && searchQuery && (
+                    <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                        <Search size={40} className="mb-3 opacity-20" />
+                        <p className="text-sm">No se encontraron mensajes coincidentes</p>
+                    </div>
+                )}
+
+                {filteredMessages.map((msg) => {
                     const isOutgoing = msg.direction === 'outgoing';
                     return (
                         <div

@@ -2,21 +2,33 @@ import React from 'react';
 import { useWhatsappConversations } from '../../hooks/useWhatsappConversations';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { MessageSquare, User, Clock } from 'lucide-react';
+import { MessageSquare, User, Clock, Plus, X } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useState } from 'react';
 
 interface ConversationListProps {
     userId: string | undefined;
     selectedId: string | null;
     onSelectConversation: (id: string) => void;
+    onNewChat: (phone: string) => void;
 }
 
 export const ConversationList: React.FC<ConversationListProps> = ({
     userId,
     selectedId,
-    onSelectConversation
+    onSelectConversation,
+    onNewChat
 }) => {
     const { conversations, loading, error } = useWhatsappConversations(userId);
+    const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
+    const [newPhone, setNewPhone] = useState('');
+
+    const handleStartNewChat = () => {
+        if (!newPhone.trim()) return;
+        onNewChat(newPhone.trim());
+        setIsNewChatModalOpen(false);
+        setNewPhone('');
+    };
 
     if (loading) {
         return (
@@ -33,16 +45,59 @@ export const ConversationList: React.FC<ConversationListProps> = ({
     }
 
     return (
-        <div className="flex flex-col overflow-y-auto h-full bg-white">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+        <div className="flex flex-col overflow-y-auto h-full bg-white relative">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10 shadow-sm">
                 <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
                     <MessageSquare size={20} className="text-blue-600" />
                     Chats de WhatsApp
                 </h2>
-                <span className="text-xs bg-blue-50 text-blue-600 font-semibold px-2 py-1 rounded-full">
-                    {conversations.length}
-                </span>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setIsNewChatModalOpen(true)}
+                        className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                        title="Nuevo Chat"
+                    >
+                        <Plus size={18} />
+                    </button>
+                    <span className="text-xs bg-slate-100 text-slate-600 font-semibold px-2 py-1 rounded-full">
+                        {conversations.length}
+                    </span>
+                </div>
             </div>
+
+            {/* New Chat Modal/Overlay */}
+            {isNewChatModalOpen && (
+                <div className="absolute inset-0 bg-white z-20 animate-in slide-in-from-top duration-200">
+                    <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                        <h3 className="font-bold text-slate-800">Enviar Nuevo Mensaje</h3>
+                        <button onClick={() => setIsNewChatModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-600">
+                            <X size={20} />
+                        </button>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Número de Teléfono</label>
+                            <input
+                                autoFocus
+                                type="tel"
+                                placeholder="Ej: 5491112345678"
+                                value={newPhone}
+                                onChange={(e) => setNewPhone(e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                onKeyDown={(e) => e.key === 'Enter' && handleStartNewChat()}
+                            />
+                            <p className="text-[10px] text-slate-400 italic">Incluya código de país y área sin el signo +</p>
+                        </div>
+                        <button
+                            onClick={handleStartNewChat}
+                            disabled={!newPhone.trim()}
+                            className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-all shadow-md active:scale-95"
+                        >
+                            Comenzar Chat
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <div className="flex-1">
                 {conversations.length === 0 ? (
