@@ -185,7 +185,7 @@ const PDFGenerator = ({ tipo, data, target, comparables, valuation, stats, broke
         <>
             <button
                 onClick={() => setShowPreview(true)}
-                className={className || `flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 hover:shadow-indigo-200 hover:shadow-md rounded-lg shadow-sm transition-all disabled:opacity-50 disabled:shadow-none active:scale-95`}
+                className={className || `flex items-center gap-2 px-4 py-3 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:-translate-y-0.5 rounded-xl shadow-md transition-all disabled:opacity-50 disabled:shadow-none active:scale-95`}
                 disabled={isGenerating || (tipo === 'tasacion' && activeComparables.length === 0)}
                 title="Generar PDF"
             >
@@ -193,8 +193,8 @@ const PDFGenerator = ({ tipo, data, target, comparables, valuation, stats, broke
                     displayMode === 'icon' ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : 'Generando...'
                 ) : (
                     <>
-                        <Download className="w-4 h-4" />
-                        {displayMode === 'text' && <span className="hidden sm:inline">PDF</span>}
+                        <Download className="w-5 h-5" />
+                        {displayMode === 'text' && <span>Previsualización del PDF</span>}
                     </>
                 )}
             </button>
