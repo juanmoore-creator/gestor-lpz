@@ -1,4 +1,3 @@
-import React from 'react';
 import {
     MapPin, Building2, Calendar, Layout, Home,
     Maximize2, Box, Bath, Car, ArrowDownRight, User, Check, Clock
@@ -14,7 +13,7 @@ interface PropertyDetailProps {
     };
 }
 
-const PropertyDetailPage = ({ property, index, theme }: PropertyDetailProps) => {
+const PropertyDetailPage = ({ property, index }: PropertyDetailProps) => {
 
     // Calculate difference percentage if both prices exist
     const diffPercentage = property.publicationPrice && property.closingPrice
