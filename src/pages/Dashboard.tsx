@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
   Upload, Home, Trash2, AlertCircle, FileSpreadsheet, X,
-  ChevronDown, ChevronUp, CheckSquare, BarChart, Sparkles, MapPin, Plus, Save
+  ChevronDown, ChevronUp, CheckSquare, BarChart, Sparkles, MapPin, Plus, Save, Pencil
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '../components/ui/Card';
@@ -44,6 +44,12 @@ function Dashboard() {
     processedComparables, stats, valuation, targetHomogenizedSurface,
     clientName, setClientName,
     currentValuationId, setCurrentValuationId,
+    // New fields
+    publicationPrice, setPublicationPrice,
+    closingPrice, setClosingPrice,
+    closingDate, setClosingDate,
+    valuationStatus, setValuationStatus,
+    amenities, setAmenities,
     setIsDirty
   } = useActiveValuation();
 
@@ -58,6 +64,13 @@ function Dashboard() {
         comparables: data.comparables,
         clientName: data.clientName,
         valuation: data.valuation, // Save calculated stats
+        // New fields
+        publicationPrice: data.publicationPrice,
+        closingPrice: data.closingPrice,
+        closingDate: data.closingDate,
+        valuationStatus: data.valuationStatus,
+        amenities: data.amenities,
+
         date: Date.now(),
         name: `Tasación - ${data.target.address || 'Sin Dirección'}`,
         inmuebleId: location.state?.propertyData?.id || null // Link if available
@@ -254,13 +267,87 @@ function Dashboard() {
           <Card>
             <div className="p-4 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/50">
               <h3 className="font-semibold text-slate-800 font-heading">Comparables ({comparables.length})</h3>
-              <button onClick={() => addComparable()} className="flex items-center justify-center gap-1 text-sm font-medium text-brand bg-brand/10 hover:bg-brand/20 px-3 py-1.5 rounded-md w-full sm:w-auto"><Plus className="w-4 h-4" /> Agregar Comparable</button>
+              <button
+                onClick={async () => {
+                  const id = await addComparable();
+                  if (id) setEditingCompId(id);
+                }}
+                className="flex items-center justify-center gap-1 text-sm font-medium text-brand bg-brand/10 hover:bg-brand/20 px-3 py-1.5 rounded-md w-full sm:w-auto"
+              >
+                <Plus className="w-4 h-4" /> Agregar Comparable
+              </button>
             </div>
             <div className="md:hidden">
-              {processedComparables.length > 0 ? (processedComparables.map(comp => (<div key={comp.id} className="border-b p-4 space-y-3"><div className="flex justify-between items-start"><input type="text" value={comp.address} onChange={e => updateComparable(comp.id, { address: e.target.value })} className="bg-transparent font-semibold text-slate-800 w-full p-0 border-0 focus:ring-0" placeholder="Dirección..." /><button onClick={() => deleteComparable(comp.id)} className="p-1.5 text-slate-400 hover:text-rose-500 rounded-md"><Trash2 className="w-4 h-4" /></button></div><div className="grid grid-cols-2 gap-4"><div><label className="text-xs text-slate-500">Precio (USD)</label><input type="number" value={comp.price} onChange={e => updateComparable(comp.id, { price: parseFloat(e.target.value) || 0 })} className="w-full p-1 rounded-md border-slate-200" /></div><div><label className="text-xs text-slate-500">Sup. Cubierta</label><input type="number" value={comp.coveredSurface} onChange={e => updateComparable(comp.id, { coveredSurface: parseFloat(e.target.value) || 0 })} className="w-full p-1 rounded-md border-slate-200" /></div></div><AnimatePresence>{expandedMobileCards.includes(comp.id) && (<motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-3 overflow-hidden"><div className="grid grid-cols-2 gap-4 pt-2"><div><label className="text-xs text-slate-500">Sup. Descub.</label><input type="number" value={comp.uncoveredSurface} onChange={e => updateComparable(comp.id, { uncoveredSurface: parseFloat(e.target.value) || 0 })} className="w-full p-1 rounded-md border-slate-200 text-sm" /></div><div><label className="text-xs text-slate-500">Factor</label><input type="number" value={comp.homogenizationFactor} onChange={e => updateComparable(comp.id, { homogenizationFactor: parseFloat(e.target.value) || 0 })} className="w-full p-1 rounded-md border-slate-200 text-sm" /></div></div></motion.div>)}</AnimatePresence><button onClick={() => toggleMobileCard(comp.id)} className="text-xs text-brand font-medium flex items-center gap-1">{expandedMobileCards.includes(comp.id) ? 'Menos' : 'Más'} Opciones<ChevronDown className={`w-3 h-3 transition-transform ${expandedMobileCards.includes(comp.id) ? 'rotate-180' : ''}`} /></button></div>))) : (<div className="p-8 text-center text-slate-400 text-sm">Agrega tu primer comparable.</div>)}
+              {processedComparables.length > 0 ? (processedComparables.map(comp => (
+                <div key={comp.id} className="border-b p-4 space-y-3">
+                  <div className="flex justify-between items-start">
+                    <input type="text" value={comp.address} onChange={e => updateComparable(comp.id, { address: e.target.value })} className="bg-transparent font-semibold text-slate-800 w-full p-0 border-0 focus:ring-0" placeholder="Dirección..." />
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => setEditingCompId(comp.id)} className="p-1.5 text-slate-400 hover:text-brand rounded-md">
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => deleteComparable(comp.id)} className="p-1.5 text-slate-400 hover:text-rose-500 rounded-md">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><label className="text-xs text-slate-500">Precio (USD)</label><input type="number" value={comp.price} onChange={e => updateComparable(comp.id, { price: parseFloat(e.target.value) || 0 })} className="w-full p-1 rounded-md border-slate-200" /></div>
+                    <div><label className="text-xs text-slate-500">Sup. Cubierta</label><input type="number" value={comp.coveredSurface} onChange={e => updateComparable(comp.id, { coveredSurface: parseFloat(e.target.value) || 0 })} className="w-full p-1 rounded-md border-slate-200" /></div>
+                  </div>
+                  <AnimatePresence>{expandedMobileCards.includes(comp.id) && (<motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-3 overflow-hidden"><div className="grid grid-cols-2 gap-4 pt-2"><div><label className="text-xs text-slate-500">Sup. Descub.</label><input type="number" value={comp.uncoveredSurface} onChange={e => updateComparable(comp.id, { uncoveredSurface: parseFloat(e.target.value) || 0 })} className="w-full p-1 rounded-md border-slate-200 text-sm" /></div><div><label className="text-xs text-slate-500">Factor</label><input type="number" value={comp.homogenizationFactor} onChange={e => updateComparable(comp.id, { homogenizationFactor: parseFloat(e.target.value) || 0 })} className="w-full p-1 rounded-md border-slate-200 text-sm" /></div></div></motion.div>)}</AnimatePresence>
+                  <button onClick={() => toggleMobileCard(comp.id)} className="text-xs text-brand font-medium flex items-center gap-1">{expandedMobileCards.includes(comp.id) ? 'Menos' : 'Más'} Opciones<ChevronDown className={`w-3 h-3 transition-transform ${expandedMobileCards.includes(comp.id) ? 'rotate-180' : ''}`} /></button>
+                </div>
+              ))) : (<div className="p-8 text-center text-slate-400 text-sm">Agrega tu primer comparable.</div>)}
             </div>
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-sm text-left"><thead className="text-xs font-semibold text-slate-500 uppercase bg-slate-50/50"><tr><th className="px-6 py-4 min-w-[220px]">Dirección</th><th className="px-4 py-4 text-right w-36">Precio (USD)</th><th className="px-4 py-4 text-right w-28">Sup. Cub (m²)</th><th className="px-4 py-4 text-right w-28">Sup. Desc (m²)</th><th className="px-4 py-4 text-center w-24">Factor</th><th className="px-4 py-4 text-right w-32">$/m² H</th><th className="px-2 py-4 w-10" /></tr></thead><tbody className="divide-y divide-slate-100">{processedComparables.map((comp) => (<tr key={comp.id} className="group hover:bg-slate-50/80"><td className="px-6 py-3"><input type="text" value={comp.address} onChange={e => updateComparable(comp.id, { address: e.target.value })} className="bg-transparent p-0 w-full focus:ring-0 font-medium" /></td><td className="px-4 py-3"><input type="number" value={comp.price} onChange={e => updateComparable(comp.id, { price: parseFloat(e.target.value) || 0 })} className="bg-transparent p-0 w-full text-right" /></td><td className="px-4 py-3"><input type="number" value={comp.coveredSurface} onChange={e => updateComparable(comp.id, { coveredSurface: parseFloat(e.target.value) || 0 })} className="bg-transparent p-0 w-full text-right" /></td><td className="px-4 py-3"><input type="number" value={comp.uncoveredSurface} onChange={e => updateComparable(comp.id, { uncoveredSurface: parseFloat(e.target.value) || 0 })} className="bg-transparent p-0 w-full text-right" /></td><td className="px-4 py-3 text-center"><input type="number" step="0.05" value={comp.homogenizationFactor} onChange={e => updateComparable(comp.id, { homogenizationFactor: parseFloat(e.target.value) || 0 })} className="bg-slate-50 border rounded px-1 py-1 w-16 text-center text-xs" /></td><td className="px-4 py-3 text-right font-bold text-xs">${formatNumber(comp.hPrice || 0)}</td><td className="px-2 py-3 text-center"><button onClick={() => deleteComparable(comp.id)} className="text-slate-300 hover:text-rose-500 p-1.5 rounded opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button></td></tr>))}</tbody></table>
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs font-semibold text-slate-500 uppercase bg-slate-50/50">
+                  <tr>
+                    <th className="px-6 py-4 min-w-[220px]">Dirección</th>
+                    <th className="px-4 py-4 text-right w-36">Precio (USD)</th>
+                    <th className="px-4 py-4 text-right w-28">Sup. Cub (m²)</th>
+                    <th className="px-4 py-4 text-right w-28">Sup. Desc (m²)</th>
+                    <th className="px-4 py-4 text-center w-24">Factor</th>
+                    <th className="px-4 py-4 text-right w-32">$/m² H</th>
+                    <th className="px-2 py-4 w-20" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {processedComparables.map((comp) => (
+                    <tr key={comp.id} className="group hover:bg-slate-50/80">
+                      <td className="px-6 py-3">
+                        <input type="text" value={comp.address} onChange={e => updateComparable(comp.id, { address: e.target.value })} className="bg-transparent p-0 w-full focus:ring-0 font-medium" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input type="number" value={comp.price} onChange={e => updateComparable(comp.id, { price: parseFloat(e.target.value) || 0 })} className="bg-transparent p-0 w-full text-right" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input type="number" value={comp.coveredSurface} onChange={e => updateComparable(comp.id, { coveredSurface: parseFloat(e.target.value) || 0 })} className="bg-transparent p-0 w-full text-right" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input type="number" value={comp.uncoveredSurface} onChange={e => updateComparable(comp.id, { uncoveredSurface: parseFloat(e.target.value) || 0 })} className="bg-transparent p-0 w-full text-right" />
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <input type="number" step="0.05" value={comp.homogenizationFactor} onChange={e => updateComparable(comp.id, { homogenizationFactor: parseFloat(e.target.value) || 0 })} className="bg-slate-50 border rounded px-1 py-1 w-16 text-center text-xs" />
+                      </td>
+                      <td className="px-4 py-3 text-right font-bold text-xs">
+                        ${formatNumber(comp.hPrice || 0)}
+                      </td>
+                      <td className="px-2 py-3 text-center">
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => setEditingCompId(comp.id)} className="text-slate-300 hover:text-brand p-1.5 rounded">
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => deleteComparable(comp.id)} className="text-slate-300 hover:text-rose-500 p-1.5 rounded">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </Card>
 
@@ -286,17 +373,149 @@ function Dashboard() {
               </Card>
             </div>
 
-            <div className="lg:col-span-4"><Card className="h-full"><div className="p-4 space-y-4"><h2 className="font-semibold text-xs uppercase tracking-wider flex items-center gap-2"><AlertCircle className="w-4 h-4 text-brand" />Datos del Reporte</h2><div className="space-y-4"><div className="bg-slate-50 p-3 rounded-lg border"><label className="text-xs text-slate-500 uppercase font-bold mb-1.5 block">Cargar Agente</label><select onChange={(e) => handleSelectAgent(e.target.value)} className="w-full text-sm" value=""><option value="" disabled>Seleccionar...</option>{loadingAgents ? <option disabled>Cargando...</option> : agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></div><div className="space-y-3"><div className="bg-slate-50 p-3 rounded-lg border"><label className="text-xs text-slate-500 uppercase font-bold mb-1.5 block">Cargar Cliente</label><select onChange={(e) => handleSelectClient(e.target.value)} className="w-full text-sm" value=""><option value="" disabled>Seleccionar...</option>{clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div><div><label className="text-xs text-slate-500 uppercase font-medium">Cliente</label><input type="text" value={clientName} onChange={e => setClientName(e.target.value)} className="w-full mt-1 text-sm" placeholder="Nombre del Cliente" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Agente</label><input type="text" value={brokerName} onChange={e => setBrokerName(e.target.value)} className="w-full mt-1 text-sm" placeholder="Ej: Juan Pérez" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Matrícula</label><input type="text" value={matricula} onChange={e => setMatricula(e.target.value)} className="w-full mt-1 text-sm" placeholder="Ej: CUCICBA 1234" /></div><button onClick={handleSaveAgent} disabled={isSavingAgent || !brokerName || !matricula} className="w-full flex items-center justify-center gap-2 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg disabled:opacity-50 mt-2">{isSavingAgent ? 'Guardando...' : <><Save className="w-3 h-3" /> GUARDAR AGENTE</>}</button></div></div></div></Card></div>
+            <div className="lg:col-span-4">
+              <Card className="h-full">
+                <div className="p-4 space-y-4">
+                  <h2 className="font-semibold text-xs uppercase tracking-wider flex items-center gap-2"><AlertCircle className="w-4 h-4 text-brand" />Datos del Reporte</h2>
+                  <div className="space-y-4">
+
+                    {/* Status & Pricing Section */}
+                    <div className="bg-slate-50 p-3 rounded-lg border space-y-3">
+                      <label className="text-xs text-slate-500 uppercase font-bold block">Estado y Cierre</label>
+
+                      <div className="flex bg-white rounded-lg p-1 border">
+                        <button
+                          onClick={() => setValuationStatus('Abierta')}
+                          className={`flex-1 text-xs font-medium py-1.5 rounded-md transition-all ${valuationStatus === 'Abierta' ? 'bg-indigo-100 text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                          Abierta
+                        </button>
+                        <button
+                          onClick={() => setValuationStatus('Cerrada')}
+                          className={`flex-1 text-xs font-medium py-1.5 rounded-md transition-all ${valuationStatus === 'Cerrada' ? 'bg-green-100 text-green-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                          Cerrada
+                        </button>
+                      </div>
+
+                      {valuationStatus === 'Cerrada' && (
+                        <div className="animate-in fade-in slide-in-from-top-2 duration-200 space-y-3 pt-2">
+                          <div>
+                            <label className="text-xs text-slate-500 uppercase font-medium">Fecha de Cierre</label>
+                            <input type="date" value={closingDate} onChange={e => setClosingDate(e.target.value)} className="w-full mt-1 text-sm bg-white" />
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[10px] text-slate-500 uppercase font-medium">Precio Public.</label>
+                              <input type="number" value={publicationPrice} onChange={e => setPublicationPrice(parseFloat(e.target.value) || 0)} className="w-full mt-1 text-sm bg-white" placeholder="USD" />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-slate-500 uppercase font-medium">Precio Venta</label>
+                              <input type="number" value={closingPrice} onChange={e => setClosingPrice(parseFloat(e.target.value) || 0)} className="w-full mt-1 text-sm bg-white" placeholder="USD" />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Agents & Clients */}
+                    <div className="bg-slate-50 p-3 rounded-lg border">
+                      <label className="text-xs text-slate-500 uppercase font-bold mb-1.5 block">Cargar Agente</label>
+                      <select onChange={(e) => handleSelectAgent(e.target.value)} className="w-full text-sm" value=""><option value="" disabled>Seleccionar...</option>{loadingAgents ? <option disabled>Cargando...</option> : agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></div>
+                    <div className="space-y-3">
+                      <div className="bg-slate-50 p-3 rounded-lg border"><label className="text-xs text-slate-500 uppercase font-bold mb-1.5 block">Cargar Cliente</label><select onChange={(e) => handleSelectClient(e.target.value)} className="w-full text-sm" value=""><option value="" disabled>Seleccionar...</option>{clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+                      <div><label className="text-xs text-slate-500 uppercase font-medium">Cliente</label><input type="text" value={clientName} onChange={e => setClientName(e.target.value)} className="w-full mt-1 text-sm" placeholder="Nombre del Cliente" /></div>
+                      <div><label className="text-xs text-slate-500 uppercase font-medium">Agente</label><input type="text" value={brokerName} onChange={e => setBrokerName(e.target.value)} className="w-full mt-1 text-sm" placeholder="Ej: Juan Pérez" /></div>
+                      <div><label className="text-xs text-slate-500 uppercase font-medium">Matrícula</label><input type="text" value={matricula} onChange={e => setMatricula(e.target.value)} className="w-full mt-1 text-sm" placeholder="Ej: CUCICBA 1234" /></div>
+                      <button onClick={handleSaveAgent} disabled={isSavingAgent || !brokerName || !matricula} className="w-full flex items-center justify-center gap-2 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg disabled:opacity-50 mt-2">{isSavingAgent ? 'Guardando...' : <><Save className="w-3 h-3" /> GUARDAR AGENTE</>}</button>
+                    </div>
+
+                    {/* Amenities / Extra Attributes */}
+                    <div className="bg-slate-50 p-3 rounded-lg border mt-4">
+                      <label className="text-xs text-slate-500 uppercase font-bold mb-2 block">Amenities del Edificio/Barrio</label>
+                      <textarea
+                        value={amenities.join('\n')}
+                        onChange={e => setAmenities(e.target.value.split('\n'))}
+                        placeholder="Piscina, SUM, Gimnasio (uno por linea)"
+                        className="w-full text-sm h-24 p-2 rounded border bg-white"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-1">Escribe un amenity por línea</p>
+                    </div>
+
+                  </div>
+                </div>
+              </Card>
+            </div>
           </div>
         </div>
 
-        {editingCompId && editingComparable && (<div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"><div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 flex flex-col max-h-[90vh]"><div className="flex items-center justify-between mb-4 pb-2 border-b"><h3 className="text-xl font-bold font-heading">Editar Comparable</h3><button onClick={() => setEditingCompId(null)} className="p-2"><X className="w-5 h-5" /></button></div><div className="flex-1 overflow-y-auto space-y-6 pr-2"><div className="space-y-4"><h4 className="text-xs font-bold text-brand uppercase">Indispensables</h4><div><label className="text-xs text-slate-500 uppercase font-medium">Dirección</label>{isLoaded ? <AddressAutocomplete value={editingComparable.address} onChange={(val, loc) => updateComparable(editingComparable.id, { address: val, location: loc })} className="w-full mt-1 text-sm" /> : <input type="text" value={editingComparable.address} onChange={e => updateComparable(editingComparable.id, { address: e.target.value })} className="w-full mt-1 text-sm" />}</div><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label className="text-xs text-slate-500 uppercase font-medium">Precio (USD)</label><input type="number" value={editingComparable.price} onChange={e => updateComparable(editingComparable.id, { price: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Días en Mercado</label><input type="number" value={editingComparable.daysOnMarket} onChange={e => updateComparable(editingComparable.id, { daysOnMarket: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label className="text-xs text-slate-500 uppercase font-medium">Cubierta m²</label><input type="number" value={editingComparable.coveredSurface} onChange={e => updateComparable(editingComparable.id, { coveredSurface: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Descubierta m²</label><input type="number" value={editingComparable.uncoveredSurface} onChange={e => updateComparable(editingComparable.id, { uncoveredSurface: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div></div><div className="grid grid-cols-1 sm:grid-cols-3 gap-3"><div><label className="text-xs text-slate-500 uppercase font-medium">Ambientes</label><input type="number" value={editingComparable.rooms} onChange={e => updateComparable(editingComparable.id, { rooms: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-center" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Dormitorios</label><input type="number" value={editingComparable.bedrooms} onChange={e => updateComparable(editingComparable.id, { bedrooms: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-center" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Baños</label><input type="number" value={editingComparable.bathrooms} onChange={e => updateComparable(editingComparable.id, { bathrooms: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-center" /></div></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label className="text-xs text-slate-500 uppercase font-medium">Antigüedad</label><input type="number" value={editingComparable.age} onChange={e => updateComparable(editingComparable.id, { age: parseFloat(e.target.value) || 0 })} className="w-full mt-1" /></div><div className="flex items-center pt-6"><label className="flex items-center gap-2 cursor-pointer"><div className={`w-5 h-5 rounded border flex items-center justify-center ${editingComparable.garage ? 'bg-brand border-brand text-white' : 'bg-slate-50'}`}>{editingComparable.garage && <CheckSquare className="w-4 h-4" />}</div><input type="checkbox" className="hidden" checked={!!editingComparable.garage} onChange={e => updateComparable(editingComparable.id, { garage: e.target.checked })} /><span className="text-sm font-medium">Tiene Cochera</span></label></div></div></div><div className="space-y-4 pt-4 border-t"><ImageUpload images={editingComparable.images || []} onImagesChange={(imgs) => updateComparable(editingComparable.id, { images: imgs })} label="Fotos del Comparable" maxImages={4} /></div><div className="space-y-4 pt-4 border-t"><h4 className="text-xs font-bold text-slate-400 uppercase">Opcionales</h4><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label className="text-xs text-slate-500 uppercase font-medium">Semicubierta</label><input type="number" value={editingComparable.semiCoveredSurface} onChange={e => updateComparable(editingComparable.id, { semiCoveredSurface: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Toilettes</label><input type="number" value={editingComparable.toilettes} onChange={e => updateComparable(editingComparable.id, { toilettes: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div></div><div><label className="text-xs text-slate-500 uppercase font-medium">Pisos</label><input type="text" value={editingComparable.floorType || ''} onChange={e => updateComparable(editingComparable.id, { floorType: e.target.value })} className="w-full mt-1 text-sm" placeholder="Ej: Porcelanato" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Deptos. Edificio</label><input type="number" value={editingComparable.apartmentsInBuilding} onChange={e => updateComparable(editingComparable.id, { apartmentsInBuilding: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div><div className="space-y-2 pt-2">{[{ label: 'Apto Crédito', key: 'isCreditEligible' }, { label: 'Apto Profesional', key: 'isProfessional' }, { label: 'Financiamiento', key: 'hasFinancing' }].map(item => (<label key={item.label} className="flex items-center gap-2 cursor-pointer"><div className={`w-4 h-4 rounded border flex items-center justify-center ${editingComparable[item.key as keyof typeof editingComparable] ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-slate-50'}`}>{editingComparable[item.key as keyof typeof editingComparable] && <CheckSquare className="w-3 h-3" />}</div><input type="checkbox" className="hidden" checked={!!editingComparable[item.key as keyof typeof editingComparable]} onChange={e => updateComparable(editingComparable.id, { [item.key]: e.target.checked })} /><span className="text-xs">{item.label}</span></label>))}</div></div></div><div className="mt-6 pt-4 border-t flex justify-end"><button onClick={() => setEditingCompId(null)} className="px-4 py-2 bg-brand text-white rounded-lg text-sm">Listo</button></div></div></div>)}
+        {editingCompId && editingComparable && (<div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"><div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 flex flex-col max-h-[90vh]"><div className="flex items-center justify-between mb-4 pb-2 border-b"><h3 className="text-xl font-bold font-heading">Editar Comparable</h3><button onClick={() => setEditingCompId(null)} className="p-2"><X className="w-5 h-5" /></button></div><div className="flex-1 overflow-y-auto space-y-6 pr-2">
+          <div className="space-y-4">
+            <h4 className="text-xs font-bold text-brand uppercase">Indispensables</h4>
+            <div><label className="text-xs text-slate-500 uppercase font-medium">Dirección</label>{isLoaded ? <AddressAutocomplete value={editingComparable.address} onChange={(val, loc) => updateComparable(editingComparable.id, { address: val, location: loc })} className="w-full mt-1 text-sm" /> : <input type="text" value={editingComparable.address} onChange={e => updateComparable(editingComparable.id, { address: e.target.value })} className="w-full mt-1 text-sm" />}</div>
+
+            {/* NEW FIELDS FOR GRID LAYOUT */}
+            <div className="bg-slate-50 p-4 rounded-xl border border-indigo-100">
+              <h5 className="text-xs font-bold text-indigo-800 uppercase mb-3 flex items-center gap-2"><Sparkles className="w-3 h-3" /> Datos de Cierre y Estado</h5>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="text-xs text-slate-500 uppercase font-medium">Estado</label>
+                  <select
+                    value={editingComparable.status || 'Disponible'}
+                    onChange={e => updateComparable(editingComparable.id, { status: e.target.value as any })}
+                    className="w-full mt-1 text-sm rounded-lg border-slate-200"
+                  >
+                    <option value="Disponible">Disponible</option>
+                    <option value="Reservado">Reservado</option>
+                    <option value="Vendido">Vendido</option>
+                    <option value="Alquilado">Alquilado</option>
+                    <option value="Cerrada">Cerrada</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 uppercase font-medium">Fecha Cierre</label>
+                  <input type="date" value={editingComparable.closingDate || ''} onChange={e => updateComparable(editingComparable.id, { closingDate: e.target.value })} className="w-full mt-1 text-sm rounded-lg border-slate-200" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="text-xs text-slate-500 uppercase font-medium">Precio Lista (USD)</label>
+                  <input type="number" value={editingComparable.publicationPrice || 0} onChange={e => updateComparable(editingComparable.id, { publicationPrice: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm rounded-lg border-slate-200" placeholder="Publicación" />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 uppercase font-medium">Precio Cierre (USD)</label>
+                  <input type="number" value={editingComparable.closingPrice || 0} onChange={e => updateComparable(editingComparable.id, { closingPrice: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm rounded-lg border-slate-200" placeholder="Real / Cierre" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 uppercase font-bold mb-1 block">Amenities / Notas</label>
+                <textarea
+                  value={(editingComparable.amenities || []).join('\n')}
+                  onChange={e => updateComparable(editingComparable.id, { amenities: e.target.value.split('\n') })}
+                  placeholder="Piscina, SUM, Gimnasio (uno por linea)"
+                  className="w-full text-sm h-16 p-2 rounded border bg-white resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div><label className="text-xs text-slate-500 uppercase font-medium">Precio Ref. (Calculo)</label><input type="number" value={editingComparable.price} onChange={e => updateComparable(editingComparable.id, { price: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div>
+              <div><label className="text-xs text-slate-500 uppercase font-medium">Días en Mercado</label><input type="number" value={editingComparable.daysOnMarket} onChange={e => updateComparable(editingComparable.id, { daysOnMarket: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label className="text-xs text-slate-500 uppercase font-medium">Cubierta m²</label><input type="number" value={editingComparable.coveredSurface} onChange={e => updateComparable(editingComparable.id, { coveredSurface: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Descubierta m²</label><input type="number" value={editingComparable.uncoveredSurface} onChange={e => updateComparable(editingComparable.id, { uncoveredSurface: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div></div><div className="grid grid-cols-1 sm:grid-cols-3 gap-3"><div><label className="text-xs text-slate-500 uppercase font-medium">Ambientes</label><input type="number" value={editingComparable.rooms} onChange={e => updateComparable(editingComparable.id, { rooms: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-center" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Dormitorios</label><input type="number" value={editingComparable.bedrooms} onChange={e => updateComparable(editingComparable.id, { bedrooms: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-center" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Baños</label><input type="number" value={editingComparable.bathrooms} onChange={e => updateComparable(editingComparable.id, { bathrooms: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-center" /></div></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label className="text-xs text-slate-500 uppercase font-medium">Antigüedad</label><input type="number" value={editingComparable.age} onChange={e => updateComparable(editingComparable.id, { age: parseFloat(e.target.value) || 0 })} className="w-full mt-1" /></div><div className="flex items-center pt-6"><label className="flex items-center gap-2 cursor-pointer"><div className={`w-5 h-5 rounded border flex items-center justify-center ${editingComparable.garage ? 'bg-brand border-brand text-white' : 'bg-slate-50'}`}>{editingComparable.garage && <CheckSquare className="w-4 h-4" />}</div><input type="checkbox" className="hidden" checked={!!editingComparable.garage} onChange={e => updateComparable(editingComparable.id, { garage: e.target.checked })} /><span className="text-sm font-medium">Tiene Cochera</span></label></div></div></div><div className="space-y-4 pt-4 border-t"><ImageUpload images={editingComparable.images || []} onImagesChange={(imgs) => updateComparable(editingComparable.id, { images: imgs })} label="Fotos del Comparable" maxImages={4} /></div><div className="space-y-4 pt-4 border-t"><h4 className="text-xs font-bold text-slate-400 uppercase">Opcionales</h4><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label className="text-xs text-slate-500 uppercase font-medium">Semicubierta</label><input type="number" value={editingComparable.semiCoveredSurface} onChange={e => updateComparable(editingComparable.id, { semiCoveredSurface: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Toilettes</label><input type="number" value={editingComparable.toilettes} onChange={e => updateComparable(editingComparable.id, { toilettes: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div></div><div><label className="text-xs text-slate-500 uppercase font-medium">Pisos</label><input type="text" value={editingComparable.floorType || ''} onChange={e => updateComparable(editingComparable.id, { floorType: e.target.value })} className="w-full mt-1 text-sm" placeholder="Ej: Porcelanato" /></div><div><label className="text-xs text-slate-500 uppercase font-medium">Deptos. Edificio</label><input type="number" value={editingComparable.apartmentsInBuilding} onChange={e => updateComparable(editingComparable.id, { apartmentsInBuilding: parseFloat(e.target.value) || 0 })} className="w-full mt-1 text-sm" /></div><div className="space-y-2 pt-2">{[{ label: 'Apto Crédito', key: 'isCreditEligible' }, { label: 'Apto Profesional', key: 'isProfessional' }, { label: 'Financiamiento', key: 'hasFinancing' }].map(item => (<label key={item.label} className="flex items-center gap-2 cursor-pointer"><div className={`w-4 h-4 rounded border flex items-center justify-center ${editingComparable[item.key as keyof typeof editingComparable] ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-slate-50'}`}>{editingComparable[item.key as keyof typeof editingComparable] && <CheckSquare className="w-3 h-3" />}</div><input type="checkbox" className="hidden" checked={!!editingComparable[item.key as keyof typeof editingComparable]} onChange={e => updateComparable(editingComparable.id, { [item.key]: e.target.checked })} /><span className="text-xs">{item.label}</span></label>))}</div></div></div><div className="mt-6 pt-4 border-t flex justify-end"><button onClick={() => setEditingCompId(null)} className="px-4 py-2 bg-brand text-white rounded-lg text-sm">Listo</button></div></div></div>)}
 
         <div className="fixed bottom-8 right-8 flex flex-col gap-3 z-50">
-          <button onClick={() => handleSaveValuation({ target, comparables, clientName, currentValuationId }, onSaveSuccess)} className="flex items-center justify-center w-12 h-12 bg-white rounded-full shadow-lg border" title="Guardar Valuación"><Save className="w-5 h-5" /></button>
+          <button onClick={() => handleSaveValuation({
+            target, comparables, clientName, currentValuationId,
+            publicationPrice, closingPrice, closingDate, valuationStatus, amenities, valuation
+          }, onSaveSuccess)} className="flex items-center justify-center w-12 h-12 bg-white rounded-full shadow-lg border" title="Guardar Valuación"><Save className="w-5 h-5" /></button>
           <PDFGenerator
             tipo="tasacion"
-            data={{ target, comparables, valuation, clientName }} // Pass bundled data
+            data={{
+              target, comparables, valuation, clientName,
+              publicationPrice, closingPrice, closingDate, valuationStatus, amenities
+            }} // Pass bundled data
             target={target}
             comparables={processedComparables}
             valuation={valuation}

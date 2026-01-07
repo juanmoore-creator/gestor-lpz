@@ -47,6 +47,13 @@ export function useActiveValuation() {
     const [clientName, setClientName] = useState('');
     const [isDirty, setIsDirty] = useState(false);
 
+    // New State Fields
+    const [publicationPrice, setPublicationPrice] = useState<number>(0);
+    const [closingPrice, setClosingPrice] = useState<number>(0);
+    const [closingDate, setClosingDate] = useState<string>('');
+    const [valuationStatus, setValuationStatus] = useState<'Abierta' | 'Cerrada'>('Abierta');
+    const [amenities, setAmenities] = useState<string[]>([]);
+
     // --- Effects for Data Syncing ---
     useEffect(() => {
         if (!user?.uid || !db) return;
@@ -92,7 +99,7 @@ export function useActiveValuation() {
         }
     };
 
-    const addComparable = async (initialData?: Partial<Omit<Comparable, 'id'>>) => {
+    const addComparable = async (initialData?: Partial<Omit<Comparable, 'id'>>): Promise<string | undefined> => {
         const paths = getPaths(user?.uid);
         if (!paths) return;
 
@@ -121,14 +128,21 @@ export function useActiveValuation() {
             isProfessional: false,
             hasFinancing: false,
             images: [],
+            // Initialize new PDF Grid fields
+            publicationPrice: 0,
+            closingPrice: 0,
+            closingDate: '',
+            status: 'Disponible',
+            amenities: [],
             ...initialData
         };
-        
+
         setComparables([...comparables, newComp]); // Optimistic update
         setIsDirty(true);
-        
+
         const { id, ...data } = newComp;
         await setDoc(docRef, data);
+        return newId;
     };
 
     const updateComparable = async (id: string, updates: Partial<Comparable>) => {
@@ -150,7 +164,7 @@ export function useActiveValuation() {
             await deleteDoc(doc(db, paths.comparablesPath, id));
         }
     };
-    
+
     const handleNewValuation = async () => {
         if (isDirty && !confirm("¿Estás seguro de crear una nueva tasación? Se perderán los datos no guardados.")) {
             return;
@@ -166,7 +180,14 @@ export function useActiveValuation() {
         setTarget(emptyTarget);
         setComparables([]);
         setCurrentValuationId(null);
+        setCurrentValuationId(null);
         setClientName('');
+        // Reset new fields
+        setPublicationPrice(0);
+        setClosingPrice(0);
+        setClosingDate('');
+        setValuationStatus('Abierta');
+        setAmenities([]);
         setIsDirty(false);
 
         const paths = getPaths(user?.uid);
@@ -178,7 +199,7 @@ export function useActiveValuation() {
             await batch.commit();
         }
     };
-    
+
     // This function will be called by the useSavedValuations hook
     const loadActiveValuation = (valuation: SavedValuation) => {
         // This function will handle the logic of setting the active
@@ -188,6 +209,12 @@ export function useActiveValuation() {
         setComparables(valuation.comparables);
         setCurrentValuationId(valuation.id);
         setClientName(valuation.clientName || '');
+        // Load new fields
+        setPublicationPrice(valuation.publicationPrice || 0);
+        setClosingPrice(valuation.closingPrice || 0);
+        setClosingDate(valuation.closingDate || '');
+        setValuationStatus(valuation.valuationStatus || 'Abierta');
+        setAmenities(valuation.amenities || []);
         setIsDirty(false);
     };
 
@@ -202,7 +229,7 @@ export function useActiveValuation() {
         return price / hSurface;
     };
 
-    const targetHomogenizedSurface = useMemo(() => 
+    const targetHomogenizedSurface = useMemo(() =>
         calculateHomogenizedSurface(target.coveredSurface, target.uncoveredSurface, target.homogenizationFactor),
         [target]
     );
@@ -244,13 +271,25 @@ export function useActiveValuation() {
         clientName,
         isDirty,
         currentValuationId,
-        
+        // New fields state
+        publicationPrice,
+        closingPrice,
+        closingDate,
+        valuationStatus,
+        amenities,
+
         // Setters
         setTarget,
         setComparables,
         setClientName,
         setIsDirty,
         setCurrentValuationId,
+        // New fields setters
+        setPublicationPrice,
+        setClosingPrice,
+        setClosingDate,
+        setValuationStatus,
+        setAmenities,
 
         // Actions
         updateTarget,

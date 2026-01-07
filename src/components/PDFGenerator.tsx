@@ -43,12 +43,18 @@ const PDFGenerator = ({ tipo, data, target, comparables, valuation, stats, broke
         if (tipo === 'tasacion') {
             // Support both old prop spread and new 'data' prop
             const valData = data || valuation || {};
-            // If props are passed individually (target, comparables, etc.) use them
-            // Otherwise use data object
+
+            // Fixed valuation resolution:
+            // Prefer the explicit valuation prop if it has data,
+            // otherwise check if it's nested in the data object (new bundle format).
+            const actualValuation = (valuation && valuation.market !== undefined) ? valuation :
+                (data && data.valuation) ? data.valuation :
+                    valData;
+
             return {
                 target: target || valData.target,
                 comparables: comparables || valData.comparables || [],
-                valuation: valData,
+                valuation: actualValuation,
                 clientName: clientName || valData.clientName || 'Cliente Final',
                 brokerName: brokerName || '',
                 matricula: matricula || ''

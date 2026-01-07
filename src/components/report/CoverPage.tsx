@@ -66,6 +66,7 @@ const CoverPage = ({ data, theme }: { data: any; theme?: any }) => {
                                 src={data.target.images[0]}
                                 alt="Propiedad"
                                 className="w-full h-full object-cover"
+                                crossOrigin="anonymous"
                             />
                         </div>
                     )}

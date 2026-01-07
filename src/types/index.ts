@@ -89,6 +89,12 @@ export interface Comparable extends PropertyCharacteristics {
     daysOnMarket: number;
     hSurface?: number;
     hPrice?: number;
+    // New fields for PDF Grid Layout
+    publicationPrice?: number;
+    closingPrice?: number;
+    closingDate?: string;
+    status?: 'Disponible' | 'Reservado' | 'Vendido' | 'Alquilado' | 'Cerrada'; // 'Cerrada' to match user term
+    amenities?: string[];
 }
 
 export interface SavedValuation {
@@ -104,6 +110,12 @@ export interface SavedValuation {
         market: number;
         high: number;
     };
+    // New fields for PDF generation
+    publicationPrice?: number;
+    closingPrice?: number;
+    closingDate?: string;
+    valuationStatus?: 'Abierta' | 'Cerrada';
+    amenities?: string[];
 }
 
 export interface Client {

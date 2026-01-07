@@ -2,7 +2,6 @@ import CoverPage from './report/CoverPage';
 import MapPage from './report/MapPage';
 import AgentManagerSidebar from './report/AgentManagerSidebar';
 
-
 import SummaryPage from './report/SummaryPage';
 import PropertyDetailPage from './report/PropertyDetailPage';
 import PriceSuggestionPage from './report/PriceSuggestionPage';

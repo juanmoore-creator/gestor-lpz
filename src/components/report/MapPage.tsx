@@ -8,14 +8,11 @@ const MapPage = ({ properties, target, theme, mapImage }: { properties: any[], t
             <h2 className="text-2xl font-bold text-slate-800 mb-6 border-b pb-2" style={{ borderColor: primaryColor }}>Ubicación de Comparables</h2>
             <div className="flex-1 border border-slate-200 rounded-lg flex items-center justify-center bg-slate-50 mb-8 overflow-hidden">
                 {mapImage ? (
-                    <div
-                        className="w-full h-full"
-                        style={{
-                            backgroundImage: `url(${mapImage})`,
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                            backgroundRepeat: 'no-repeat'
-                        }}
+                    <img
+                        src={mapImage}
+                        className="w-full h-full object-cover"
+                        crossOrigin="anonymous"
+                        alt="Mapa de Comparables"
                     />
                 ) : (
                     <div className="flex flex-col items-center text-slate-400 p-8 text-center">
