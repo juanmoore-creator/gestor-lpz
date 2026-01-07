@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Outlet, useNavigate, NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, Home, FolderOpen, Users, CalendarDays, LayoutDashboard, Menu, X, MessageSquare } from 'lucide-react';
+import { LogOut, Home, FolderOpen, Users, CalendarDays, LayoutDashboard, Menu, X } from 'lucide-react';
 
 
 import BottomNav from '../components/BottomNav';
