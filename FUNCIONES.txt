@@ -1,0 +1,79 @@
+================================
+FUNCIONES DEL PROYECTO TASACCION
+================================
+
+Este documento detalla todas las funcionalidades y capacidades operativas de la aplicación "Tasaccion".
+
+---------------------------------
+1. GESTIÓN DE TASACIONES (CORE)
+---------------------------------
+La funcionalidad principal de la aplicación, diseñada para calcular el valor de mercado de propiedades.
+
+- **Creación de Tasaciones:** Permite iniciar una nueva valoración introduciendo los datos de una propiedad objetivo.
+- **Método de Comparables:** Algoritmo que permite al usuario seleccionar propiedades similares (comparables) para estimar el precio.
+- **Gestión de Tasaciones Guardadas:** Visualización y edición de tasaciones previas (`useSavedValuations`).
+- **Generación de Reportes PDF:** Creación automática de documentos PDF profesionales con la valoración, datos de la propiedad y comparativas (`html2canvas`, `jspdf`).
+- **Cálculos Automáticos:** Estimación de valores máximos, mínimos y promedios basados en los comparables seleccionados.
+
+---------------------------------
+2. GESTIÓN DE INMUEBLES (PROPIEDADES)
+---------------------------------
+Módulo para el inventario y administración de bienes raíces.
+
+- **Inventario de Propiedades:** Listado completo de inmuebles captados (`InmueblesPage`).
+- **Ficha Detallada:** Visualización de todas las características, ubicación y estado de una propiedad (`PropertyDetailPage`).
+- **Edición y Creación:** Formularios para añadir o modificar datos de propiedades (`PropertyEditorPage`).
+- **Gestión de Imágenes:** Subida, almacenamiento y optimización de fotos de inmuebles a través de ImageKit.
+- **Geolocalización:** Integración con Google Maps para ubicar propiedades y mostrar mapas en los detalles.
+
+---------------------------------
+3. CRM Y GESTIÓN DE CLIENTES
+---------------------------------
+Herramientas para administrar la relación con los clientes.
+
+- **Base de Datos de Clientes:** Registro y listado de clientes (propietarios y compradores) (`ClientsManager`).
+- **Perfiles de Cliente:** Información de contacto y preferencias.
+- **Seguimiento:** Vinculación de clientes con propiedades, ofertas y visitas.
+
+---------------------------------
+4. AGENDA Y VISITAS
+---------------------------------
+Sistema para la organización del tiempo y eventos.
+
+- **Calendario Interactivo:** Visualización mensual/semanal de eventos (`CalendarPage`).
+- **Gestión de Visitas:** Programación y seguimiento de visitas a propiedades (`useVisits`).
+- **Sincronización:** Integración con Google Calendar para mantener la agenda actualizada.
+
+---------------------------------
+5. GESTIÓN DOCUMENTAL
+---------------------------------
+Almacenamiento y organización de archivos.
+
+- **Archivos en la Nube:** Subida y gestión de documentos (escrituras, contratos, planos) integrados con Google Drive.
+- **Renombrado y Organización:** Herramientas para organizar los archivos subidos (`api/rename-file`).
+
+---------------------------------
+6. COMUNICACIÓN Y WHATSAPP
+---------------------------------
+Módulo de mensajería integrado.
+
+- **Envío de Mensajes:** Capacidad para enviar notificaciones o mensajes a clientes directamente desde la app (`api/whatsapp/send-message`).
+- **Gestión de Conversaciones:** Visualización de historiales de chat (`WhatsappAdminPage`).
+- **Webhooks:** Recepción de mensajes entrantes y actualizaciones de estado.
+
+---------------------------------
+7. HERRAMIENTAS Y UTILIDADES
+---------------------------------
+Funciones auxiliares para mejorar la productividad.
+
+- **Importación de Datos:** Capacidad para importar listados de propiedades o clientes desde hojas de cálculo de Google o archivos CSV (`useGoogleSheetImport`).
+- **Panel de Control:** Vista general con métricas y accesos directos (`Dashboard`).
+- **Autenticación:** Sistema de login seguro para agentes (`LoginPage`).
+
+---------------------------------
+8. API Y BACKEND (SERVERLESS)
+---------------------------------
+Funciones que operan en el servidor para tareas seguras.
+
+- **Autenticación de Servicios:** Endpoints para autorizar el uso de ImageKit y Google Calendar de forma segura.
+- **Manejo de Archivos:** Endpoints para subir archivos a Google Drive (`api/upload-to-drive`).
