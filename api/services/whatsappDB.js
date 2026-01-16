@@ -32,7 +32,7 @@ const firestore = admin.firestore();
  * @param {string} params.direction - 'incoming' or 'outgoing'
  * @param {number} [params.timestamp] - Unix ms timestamp
  */
-export async function saveMessageToConversation({ from, text, direction, timestamp = Date.now() }) {
+export async function saveMessageToConversation({ from, text, direction, timestamp = Date.now(), ...extraFields }) {
     const conversationsRef = firestore.collection('whatsapp_conversations');
 
     // 1. Find conversation by phoneNumber
@@ -73,7 +73,8 @@ export async function saveMessageToConversation({ from, text, direction, timesta
         text,
         timestamp: admin.firestore.Timestamp.fromMillis(timestamp),
         direction,
-        status: direction === 'outgoing' ? 'sent' : 'received'
+        status: direction === 'outgoing' ? 'sent' : 'received',
+        ...extraFields
     });
 
     return conversationId;

@@ -14,6 +14,7 @@ export interface WhatsappMessage {
     timestamp: Timestamp;
     direction: 'incoming' | 'outgoing';
     status: 'sent' | 'delivered' | 'read' | 'received';
+    whatsapp_id?: string;
 }
 
 export const useWhatsappMessages = (conversationId: string | null) => {

@@ -143,7 +143,7 @@ const PrivateLayout = () => {
             </header>
 
             <main className={isWhatsappPage
-                ? "flex-1 w-full flex flex-col h-[calc(100vh-8rem)] md:h-[calc(100vh-4rem)]"
+                ? "flex-1 w-full mx-auto max-w-[1600px] flex flex-col h-[calc(100vh-8rem)] md:h-[calc(100vh-4rem)] md:px-6 md:pb-6 md:pt-4"
                 : "flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-8"
             }>
                 <Outlet />

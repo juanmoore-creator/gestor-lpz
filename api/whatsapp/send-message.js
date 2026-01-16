@@ -35,13 +35,15 @@ export default async function handler(req, res) {
     }
 
     try {
-        // 1. Send message via Meta Graph API
         const payload = {
             messaging_product: 'whatsapp',
             recipient_type: 'individual',
             to: to,
             type: 'text',
-            text: { body: text }
+            text: {
+                preview_url: false,
+                body: text
+            }
         };
 
         if (context?.message_id) {
@@ -79,7 +81,8 @@ export default async function handler(req, res) {
                 text: text,
                 direction: 'outgoing',
                 timestamp: Date.now(),
-                ...(context?.message_id && { reply_to_message_id: context.message_id })
+                ...(context?.message_id && { reply_to_message_id: context.message_id }),
+                whatsapp_id: data.messages?.[0]?.id
             });
         } catch (dbError) {
             console.error('Error saving outgoing message to DB:', dbError);

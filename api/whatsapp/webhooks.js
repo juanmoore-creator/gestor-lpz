@@ -53,7 +53,8 @@ export default async function handler(req, res) {
                                 from,
                                 text,
                                 direction: 'incoming',
-                                timestamp: parseInt(timestamp) * 1000 // Convert to ms
+                                timestamp: parseInt(timestamp) * 1000, // Convert to ms
+                                whatsapp_id: message.id
                             });
                         } catch (dbError) {
                             console.error('Error saving to DB:', dbError);

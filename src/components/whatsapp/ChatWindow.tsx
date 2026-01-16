@@ -44,7 +44,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         e.preventDefault();
         if (!newMessage.trim() || !phoneNumber || isSending) return;
 
-        const result = await sendMessage(phoneNumber, newMessage, replyingTo?.id);
+        // Use whatsapp_id if available (for native context), otherwise fallback to Firestore ID (though Meta API will likely reject it, it keeps the UI logic working)
+        const replyId = replyingTo?.whatsapp_id || replyingTo?.id;
+        const result = await sendMessage(phoneNumber, newMessage, replyId);
 
         if (result.success) {
             setNewMessage('');
