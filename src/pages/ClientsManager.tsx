@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import {
     Users, Search, Filter, Phone, MoveRight as ArrowRight, X, MessageCircle, Pencil, History,
     TrendingUp, Activity, UserPlus, Trash2, FileText, Mail, Calendar, Home,
@@ -147,21 +147,37 @@ export default function ClientsManager() {
     };
     const openEditClientModal = (client: Client) => { setEditingClient(client); setIsModalOpen(true); };
 
+    const processedNavRef = useRef<string | null>(null);
+
     useEffect(() => {
         if (location.state?.openNewClient) {
             openNewClientModal();
+            // We can clear state here safely as it triggers a modal, not a persistent drawer derived from state
             navigate(location.pathname, { replace: true, state: {} });
-        } else if (location.state?.selectedClientId && clients.length > 0) {
-            const clientToSelect = clients.find(c => c.id === location.state.selectedClientId);
-            if (clientToSelect) {
-                const clientWithProps = {
-                    ...clientToSelect,
-                    properties: getInmueblesByPropietario(clientToSelect.id)
-                };
-                setSelectedClient(clientWithProps);
-                // Clear state to keep URL clean but allow back button if needed (replace=true avoids clutter)
-                navigate(location.pathname, { replace: true, state: {} });
+        } else if (location.state?.selectedClientId) {
+            // Prevent re-processing the same ID if we already handled it
+            // This avoids the issue where clearing state fails or race conditions cause re-opening
+            if (processedNavRef.current === location.state.selectedClientId) {
+                return;
             }
+
+            if (clients.length > 0) {
+                const clientToSelect = clients.find(c => c.id === location.state.selectedClientId);
+                if (clientToSelect) {
+                    const clientWithProps = {
+                        ...clientToSelect,
+                        properties: getInmueblesByPropietario(clientToSelect.id)
+                    };
+                    setSelectedClient(clientWithProps);
+                    processedNavRef.current = location.state.selectedClientId;
+
+                    // Clear state to keep URL clean, but the Ref prevents re-opening if this fails or delays
+                    navigate(location.pathname, { replace: true, state: {} });
+                }
+            }
+        } else {
+            // Reset ref when state is empty, so we can navigate to the same client again later if needed
+            processedNavRef.current = null;
         }
     }, [location.state, navigate, clients, getInmueblesByPropietario]);
 

@@ -4,12 +4,14 @@ import { useWhatsappSender } from '../../hooks/useWhatsappSender';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
-import { Send, User, ChevronLeft, Search, MoreVertical, CheckCheck, X, UserPlus, Link as LinkIcon, Unlink } from 'lucide-react';
+import { Send, User, ChevronLeft, Search, MoreVertical, CheckCheck, X, UserPlus, Link as LinkIcon, Unlink, Sparkles } from 'lucide-react';
+import { SuggestionCard } from './SuggestionCard';
+import { LinkClientModal } from './LinkClientModal';
+import { CreateClientFromChatModal } from './CreateClientFromChatModal';
+import ScheduleMeetingModal from '../modals/ScheduleMeetingModal';
 import { clsx } from 'clsx';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
-import { LinkClientModal } from './LinkClientModal';
-import { CreateClientFromChatModal } from './CreateClientFromChatModal';
 import { useClients } from '../../context/ClientsContext';
 import type { WhatsappConversation } from '../../types/index';
 
@@ -42,6 +44,47 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     const [replyingTo, setReplyingTo] = useState<WhatsappMessage | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    // AI Copilot States
+    const [showAnalysisMenu, setShowAnalysisMenu] = useState(false);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [analysisResult, setAnalysisResult] = useState<any>(null);
+    const [showScheduleModal, setShowScheduleModal] = useState(false);
+
+    const handleAnalyzeConversation = async (count: number) => {
+        setIsAnalyzing(true);
+        setShowAnalysisMenu(false);
+        setAnalysisResult(null);
+
+        try {
+            // 1. Prepare messages
+            // Take last N messages
+            const lastMessages = [...messages].slice(-count);
+
+            // Format for API
+            const formattedMessages = lastMessages.map(msg => ({
+                sender: msg.direction === 'outgoing' ? 'me' : 'client',
+                text: msg.text
+            }));
+
+            // 2. Call API
+            const response = await fetch('/api/ai/analyze-conversation', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages: formattedMessages })
+            });
+
+            if (!response.ok) throw new Error('Error en análisis');
+
+            const data = await response.json();
+            setAnalysisResult(data);
+        } catch (error) {
+            console.error('Error analyzing conversation:', error);
+            alert('No se pudo analizar la conversación. Intenta de nuevo.');
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
 
     // Fetch conversation details to get clientId updates
     useEffect(() => {
@@ -160,6 +203,40 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                         >
                             <Search size={20} />
                         </button>
+
+                        {/* Sparkles / Copilot Button */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowAnalysisMenu(!showAnalysisMenu)}
+                                className={clsx(
+                                    "p-2 transition-colors relative",
+                                    showAnalysisMenu || analysisResult ? "text-blue-600 bg-blue-50 rounded-lg" : "text-slate-400 hover:text-slate-600"
+                                )}
+                                title="Copiloto IA"
+                            >
+                                <Sparkles size={20} />
+                                {analysisResult && (
+                                    <span className="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full ring-1 ring-white" />
+                                )}
+                            </button>
+
+                            {showAnalysisMenu && (
+                                <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setShowAnalysisMenu(false)} />
+                                    <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-50 py-1 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                                        <div className="px-4 py-2 bg-blue-50 border-b border-blue-100">
+                                            <p className="text-xs font-bold text-blue-800 uppercase tracking-wide flex items-center gap-2">
+                                                <Sparkles size={12} /> Analizar últimos...
+                                            </p>
+                                        </div>
+                                        <button onClick={() => handleAnalyzeConversation(5)} className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700">5 mensajes</button>
+                                        <button onClick={() => handleAnalyzeConversation(10)} className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700">10 mensajes</button>
+                                        <button onClick={() => handleAnalyzeConversation(20)} className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700">20 mensajes</button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
                         <div className="relative">
                             <button
                                 onClick={() => setShowMenu(!showMenu)}
@@ -340,7 +417,26 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             </div>
 
             {/* Input Area */}
-            <footer className="bg-white p-3 md:p-4 border-t border-slate-200">
+            <footer className="bg-white p-3 md:p-4 border-t border-slate-200 relative">
+                {/* AI Suggestion Card */}
+                {(analysisResult || isAnalyzing) && (
+                    <SuggestionCard
+                        result={analysisResult}
+                        isLoading={isAnalyzing}
+                        onClose={() => setAnalysisResult(null)}
+                        onApplyReply={(text) => {
+                            setNewMessage(text);
+                            // Optional: focus textarea
+                            textareaRef.current?.focus();
+                        }}
+                        onExecuteAction={(action) => {
+                            if (action === 'SCHEDULE_MEETING') {
+                                setShowScheduleModal(true);
+                            }
+                        }}
+                    />
+                )}
+
                 <form
                     onSubmit={handleSendMessage}
                     className="flex items-end gap-2 max-w-5xl mx-auto"
@@ -399,24 +495,34 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             </footer>
 
             {/* Modals */}
-            {conversationId && (
-                <>
-                    <LinkClientModal
-                        isOpen={showLinkClientModal}
-                        onClose={() => setShowLinkClientModal(false)}
-                        conversationId={conversationId as string}
-                        onLinkSuccess={() => { }}
-                    />
-                    <CreateClientFromChatModal
-                        isOpen={showCreateClientModal}
-                        onClose={() => setShowCreateClientModal(false)}
-                        conversationId={conversationId as string}
-                        initialPhoneNumber={phoneNumber}
-                        initialName={contactName}
-                        onLinkSuccess={() => { }}
-                    />
-                </>
-            )}
-        </div>
+            {
+                conversationId && (
+                    <>
+                        <LinkClientModal
+                            isOpen={showLinkClientModal}
+                            onClose={() => setShowLinkClientModal(false)}
+                            conversationId={conversationId as string}
+                            onLinkSuccess={() => { }}
+                        />
+                        <CreateClientFromChatModal
+                            isOpen={showCreateClientModal}
+                            onClose={() => setShowCreateClientModal(false)}
+                            conversationId={conversationId as string}
+                            initialPhoneNumber={phoneNumber}
+                            initialName={contactName}
+                            onLinkSuccess={() => { }}
+                        />
+
+                        {/* Schedule Meeting Modal - connected to AI Action */}
+                        <ScheduleMeetingModal
+                            isOpen={showScheduleModal}
+                            onClose={() => setShowScheduleModal(false)}
+                            // initialClientId={linkedClient?.id} // Removed as prop does not exist
+                            initialNotes={analysisResult ? `Sugerido por Copiloto:\n${analysisResult.analysis}` : ''}
+                        />
+                    </>
+                )
+            }
+        </div >
     );
 };

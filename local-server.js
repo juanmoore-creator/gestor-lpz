@@ -130,6 +130,24 @@ const server = createServer(async (req, res) => {
         } catch (e) {
             handleError(e, res);
         }
+    } else if (req.url === '/api/ai/analyze-conversation') {
+        console.log("Request received for /api/ai/analyze-conversation");
+        const mockRes = createMockRes(res);
+        try {
+            const { default: analyzeHandler } = await import('./api/ai/analyze-conversation.js');
+            let body = '';
+            req.on('data', chunk => { body += chunk.toString(); });
+            req.on('end', async () => {
+                try {
+                    req.body = JSON.parse(body || '{}');
+                    await analyzeHandler(req, mockRes);
+                } catch (err) {
+                    handleError(err, res);
+                }
+            });
+        } catch (e) {
+            handleError(e, res);
+        }
     } else {
         res.statusCode = 404;
         res.end('Not Found: ' + req.url);

@@ -5,10 +5,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface ScheduleMeetingModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSuccess?: () => void; // Callback to refresh events
+    onSuccess?: () => void;
+    initialNotes?: string;
 }
 
-export default function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: ScheduleMeetingModalProps) {
+export default function ScheduleMeetingModal({ isOpen, onClose, onSuccess, initialNotes = '' }: ScheduleMeetingModalProps) {
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -38,14 +39,14 @@ export default function ScheduleMeetingModal({ isOpen, onClose, onSuccess }: Sch
 
             setNewEvent({
                 summary: '',
-                description: '',
+                description: initialNotes || '',
                 location: '',
                 startDateTime: toLocalISO(startDate),
                 endDateTime: toLocalISO(endDate)
             });
             setError(null);
         }
-    }, [isOpen]);
+    }, [isOpen, initialNotes]);
 
     const handleSaveEvent = async (e: React.FormEvent) => {
         e.preventDefault();
