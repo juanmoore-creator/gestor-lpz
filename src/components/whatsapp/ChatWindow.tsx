@@ -77,11 +77,12 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     );
 
     // Auto scroll to bottom when new messages arrive
+    // Auto scroll to bottom when new messages arrive
     useEffect(() => {
-        if (scrollRef.current && !isSearching) {
+        if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
-    }, [messages, isSearching]);
+    }, [messages, isSearching, conversationId, loading]);
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -258,7 +259,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             {/* Messages Area */}
             <div
                 ref={scrollRef}
-                className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 scroll-smooth"
+                className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4"
                 style={{ backgroundImage: 'radial-gradient(#d1d1d1 0.5px, transparent 0.5px)', backgroundSize: '20px 20px' }}
             >
                 {loading && messages.length === 0 && conversationId && (
