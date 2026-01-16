@@ -34,11 +34,55 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'WhatsApp API not configured' });
     }
 
+
+    // Helper function for Argentina routing
+    function formatNumberForArgentinaRouting(number) {
+        // Ensure it's a string
+        const numStr = String(number);
+
+        // Check if it starts with 549 (Argentina Mobile standard format)
+        if (numStr.startsWith('549')) {
+            // Remove the '9' (which is at index 2)
+            // 549... -> 54...
+            let cleanNumber = '54' + numStr.substring(3);
+
+            // Logic to detect area code and insert '15'
+            // We need to look at what comes after '54'
+            // If it's '11' (Buenos Aires), area code length is 2.
+            // Otherwise, we assume standard 3 digit area code for other major/minor cities.
+
+            const rest = cleanNumber.substring(2); // Everything after 54
+
+            let areaCode = '';
+            let localNumber = '';
+
+            if (rest.startsWith('11')) {
+                areaCode = '11';
+                localNumber = rest.substring(2);
+            } else {
+                // Assume 3 digits for other areas (e.g. 221, 351, etc)
+                areaCode = rest.substring(0, 3);
+                localNumber = rest.substring(3);
+            }
+
+            // Construct new format: 54 + Area + 15 + Local
+            return `54${areaCode}15${localNumber}`;
+        }
+
+        // Fallback: return original if it doesn't match criteria
+        return numStr;
+    }
+
+    // Apply formatting logic just before sending to Meta
+    // Note: We keep the original 'to' for saving to database to maintain consistency with incoming webhooks
+    const originalTo = to;
+    const metaTo = formatNumberForArgentinaRouting(to);
+
     try {
         const payload = {
             messaging_product: 'whatsapp',
             recipient_type: 'individual',
-            to: to,
+            to: metaTo,
             type: 'text',
             text: {
                 preview_url: false,
