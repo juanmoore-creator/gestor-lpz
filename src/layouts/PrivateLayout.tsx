@@ -32,7 +32,10 @@ const PrivateLayout = () => {
 
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div className={isWhatsappPage
+            ? "h-dvh bg-gray-50 flex flex-col overflow-hidden"
+            : "min-h-screen bg-gray-50 flex flex-col"
+        }>
             <header className="bg-white shadow-sm sticky top-0 z-50 pt-[env(safe-area-inset-top)]">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
                     {/* Logo */}
@@ -143,7 +146,7 @@ const PrivateLayout = () => {
             </header>
 
             <main className={isWhatsappPage
-                ? "flex-1 w-full mx-auto max-w-[1600px] flex flex-col h-[calc(100dvh-8rem)] md:h-[calc(100dvh-4rem)] md:px-6 md:pb-6 md:pt-4 overflow-hidden"
+                ? "flex-1 w-full mx-auto max-w-[1600px] flex flex-col md:px-6 md:pb-6 md:pt-4 overflow-hidden"
                 : "flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-8"
             }>
                 <Outlet />
