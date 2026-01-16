@@ -277,6 +277,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
                 {filteredMessages.map((msg) => {
                     const isOutgoing = msg.direction === 'outgoing';
+                    const replyContext = msg.reply_to_message_id
+                        ? messages.find(m => m.whatsapp_id === msg.reply_to_message_id)
+                        : undefined;
+
                     return (
                         <div
                             key={msg.id}
@@ -291,6 +295,19 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                                     ? "bg-blue-600 text-white rounded-tr-none"
                                     : "bg-white text-slate-800 rounded-tl-none border border-slate-100"
                             )}>
+                                {replyContext && (
+                                    <div className={clsx(
+                                        "mb-2 p-2 rounded-md border-l-4 text-xs cursor-pointer active:opacity-75",
+                                        isOutgoing
+                                            ? "bg-blue-700/50 border-blue-300 text-blue-100"
+                                            : "bg-slate-100 border-green-500 text-slate-600"
+                                    )}>
+                                        <p className="font-bold opacity-90 mb-0.5">
+                                            {replyContext.direction === 'outgoing' ? 'Tú' : (contactName || phoneNumber)}
+                                        </p>
+                                        <p className="line-clamp-2 opacity-80">{replyContext.text}</p>
+                                    </div>
+                                )}
                                 <p className="text-sm md:text-base whitespace-pre-wrap">{msg.text}</p>
                                 <div className={clsx(
                                     "flex items-center justify-end gap-1 mt-1",
