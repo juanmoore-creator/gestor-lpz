@@ -74,13 +74,16 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 body: JSON.stringify({ messages: formattedMessages })
             });
 
-            if (!response.ok) throw new Error('Error en análisis');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Error en análisis');
+            }
 
             const data = await response.json();
             setAnalysisResult(data);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error analyzing conversation:', error);
-            alert('No se pudo analizar la conversación. Intenta de nuevo.');
+            alert(`⚠️ Error: ${error.message || 'No se pudo analizar la conversación.'}`);
         } finally {
             setIsAnalyzing(false);
         }
