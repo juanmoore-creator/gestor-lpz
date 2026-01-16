@@ -3,8 +3,14 @@ import { useWhatsappMessages, type WhatsappMessage } from '../../hooks/useWhatsa
 import { useWhatsappSender } from '../../hooks/useWhatsappSender';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Send, User, ChevronLeft, Search, MoreVertical, CheckCheck, X } from 'lucide-react';
+import { Send, User, ChevronLeft, Search, MoreVertical, CheckCheck, X, UserPlus, Link as LinkIcon, Unlink } from 'lucide-react';
 import { clsx } from 'clsx';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
+import { LinkClientModal } from './LinkClientModal';
+import { CreateClientFromChatModal } from './CreateClientFromChatModal';
+import { useClients } from '../../context/ClientsContext';
+import type { WhatsappConversation } from '../../types/index';
 
 interface ChatWindowProps {
     conversationId: string | null;
@@ -22,11 +28,48 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     const { messages, loading } = useWhatsappMessages(conversationId);
     const [newMessage, setNewMessage] = useState('');
     const { sendMessage, isSending } = useWhatsappSender();
+    const { getClientById } = useClients();
+    const [currentConversation, setCurrentConversation] = useState<WhatsappConversation | null>(null);
+    const [showLinkClientModal, setShowLinkClientModal] = useState(false);
+    const [showCreateClientModal, setShowCreateClientModal] = useState(false);
+    const [showMenu, setShowMenu] = useState(false);
+
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     const [replyingTo, setReplyingTo] = useState<WhatsappMessage | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    // Fetch conversation details to get clientId updates
+    useEffect(() => {
+        if (!conversationId) {
+            setCurrentConversation(null);
+            return;
+        }
+
+        const unsub = onSnapshot(doc(db, 'whatsapp_conversations', conversationId), (doc) => {
+            if (doc.exists()) {
+                setCurrentConversation({ id: doc.id, ...doc.data() } as WhatsappConversation);
+            }
+        });
+
+        return () => unsub();
+    }, [conversationId]);
+
+    const linkedClient = currentConversation?.clientId ? getClientById(currentConversation.clientId) : null;
+
+    const handleDisconnectClient = async () => {
+        if (!conversationId || !confirm('¿Estás seguro de desvincular este cliente?')) return;
+        try {
+            await updateDoc(doc(db, 'whatsapp_conversations', conversationId), {
+                clientId: null
+            });
+            setShowMenu(false);
+        } catch (error) {
+            console.error('Error disconnecting client:', error);
+            alert('Error al desvincular cliente');
+        }
+    };
 
     // Filter messages based on search query
     const filteredMessages = messages.filter(msg =>
@@ -82,8 +125,17 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                             <User size={20} />
                         </div>
                         <div>
-                            <h3 className="font-bold text-slate-900 leading-tight truncate max-w-[150px] md:max-w-none">
-                                {contactName || phoneNumber}
+                            <h3 className="font-bold text-slate-900 leading-tight truncate max-w-[150px] md:max-w-none flex items-center gap-2">
+                                {linkedClient ? (
+                                    <>
+                                        <span>{linkedClient.name}</span>
+                                        <span className="text-[10px] font-normal text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full border border-slate-200">
+                                            {contactName || phoneNumber}
+                                        </span>
+                                    </>
+                                ) : (
+                                    contactName || phoneNumber
+                                )}
                             </h3>
                             <p className="text-[10px] text-green-500 font-semibold flex items-center gap-1">
                                 <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
@@ -104,9 +156,77 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                         >
                             <Search size={20} />
                         </button>
-                        <button className="p-2 text-slate-400 hover:text-slate-600 transition-colors">
-                            <MoreVertical size={20} />
-                        </button>
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowMenu(!showMenu)}
+                                className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                <MoreVertical size={20} />
+                            </button>
+
+                            {showMenu && (
+                                <>
+                                    <div
+                                        className="fixed inset-0 z-40"
+                                        onClick={() => setShowMenu(false)}
+                                    />
+                                    <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 z-50 py-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                                        {linkedClient ? (
+                                            <>
+                                                <div className="px-4 py-2 border-b border-slate-50 mb-1">
+                                                    <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">Cliente Vinculado</p>
+                                                    <p className="font-bold text-slate-800 truncate">{linkedClient.name}</p>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        // Navigate to client details if implemented
+                                                        alert(`Navegar a cliente: ${linkedClient.name}`);
+                                                        setShowMenu(false);
+                                                    }}
+                                                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                                >
+                                                    <User size={16} />
+                                                    Ver Ficha de Cliente
+                                                </button>
+                                                <button
+                                                    onClick={handleDisconnectClient}
+                                                    className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                                >
+                                                    <Unlink size={16} />
+                                                    Desvincular Cliente
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="px-4 py-2 border-b border-slate-50 mb-1">
+                                                    <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">Acciones</p>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        setShowCreateClientModal(true);
+                                                        setShowMenu(false);
+                                                    }}
+                                                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                                >
+                                                    <UserPlus size={16} />
+                                                    Crear Nuevo Cliente
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setShowLinkClientModal(true);
+                                                        setShowMenu(false);
+                                                    }}
+                                                    className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                                >
+                                                    <LinkIcon size={16} />
+                                                    Vincular a Existente
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -257,6 +377,26 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                     </button>
                 </form>
             </footer>
+
+            {/* Modals */}
+            {conversationId && (
+                <>
+                    <LinkClientModal
+                        isOpen={showLinkClientModal}
+                        onClose={() => setShowLinkClientModal(false)}
+                        conversationId={conversationId as string}
+                        onLinkSuccess={() => { }}
+                    />
+                    <CreateClientFromChatModal
+                        isOpen={showCreateClientModal}
+                        onClose={() => setShowCreateClientModal(false)}
+                        conversationId={conversationId as string}
+                        initialPhoneNumber={phoneNumber}
+                        initialName={contactName}
+                        onLinkSuccess={() => { }}
+                    />
+                </>
+            )}
         </div>
     );
 };

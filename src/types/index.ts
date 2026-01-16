@@ -175,3 +175,14 @@ export interface PropertyDocument {
     uploadedAt: any;
 }
 
+
+export interface WhatsappConversation {
+    id: string;
+    contactPhoneNumber: string;
+    contactName: string;
+    assignedTo: string;
+    lastMessageTimestamp: any; // Using any for Timestamp compatibility
+    lastMessageText: string;
+    unread: boolean;
+    clientId?: string; // ID del cliente vinculado en Firebase
+}

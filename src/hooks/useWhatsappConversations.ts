@@ -4,19 +4,10 @@ import {
     query,
     where,
     onSnapshot,
-    Timestamp
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
-export interface WhatsappConversation {
-    id: string;
-    contactPhoneNumber: string;
-    contactName: string;
-    assignedTo: string;
-    lastMessageTimestamp: Timestamp;
-    lastMessageText: string;
-    unread: boolean;
-}
+import type { WhatsappConversation } from '../types/index';
 
 export const useWhatsappConversations = (userId: string | undefined) => {
     const [conversations, setConversations] = useState<WhatsappConversation[]>([]);
