@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useWhatsappMessages } from '../../hooks/useWhatsappMessages';
+import { useWhatsappSender } from '../../hooks/useWhatsappSender';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Send, User, ChevronLeft, Search, MoreVertical, CheckCheck, X } from 'lucide-react';
@@ -20,7 +21,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 }) => {
     const { messages, loading } = useWhatsappMessages(conversationId);
     const [newMessage, setNewMessage] = useState('');
-    const [sending, setSending] = useState(false);
+    const { sendMessage, isSending } = useWhatsappSender();
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -39,31 +40,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newMessage.trim() || !phoneNumber || sending) return;
+        if (!newMessage.trim() || !phoneNumber || isSending) return;
 
-        setSending(true);
-        try {
-            const response = await fetch('/api/whatsapp/send-message', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    to: phoneNumber,
-                    text: newMessage.trim()
-                })
-            });
+        const result = await sendMessage(phoneNumber, newMessage);
 
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || 'Error sending message');
-            }
-
+        if (result.success) {
             setNewMessage('');
-        } catch (err: any) {
-            console.error('Send error:', err);
-            const errorMessage = err.message || 'Error al enviar mensaje';
-            alert(`Error: ${errorMessage}`);
-        } finally {
-            setSending(false);
+        } else {
+            alert(`Error: ${result.error || 'Error al enviar mensaje'}`);
         }
     };
 
@@ -230,15 +214,15 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                     </div>
                     <button
                         type="submit"
-                        disabled={!newMessage.trim() || sending}
+                        disabled={!newMessage.trim() || isSending}
                         className={clsx(
                             "h-11 w-11 rounded-full flex items-center justify-center transition-all shadow-md active:scale-95 shrink-0",
-                            !newMessage.trim() || sending
+                            !newMessage.trim() || isSending
                                 ? "bg-slate-100 text-slate-400 cursor-not-allowed"
                                 : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg"
                         )}
                     >
-                        {sending ? (
+                        {isSending ? (
                             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
                         ) : (
                             <Send size={20} className="ml-0.5" />
