@@ -151,8 +151,19 @@ export default function ClientsManager() {
         if (location.state?.openNewClient) {
             openNewClientModal();
             navigate(location.pathname, { replace: true, state: {} });
+        } else if (location.state?.selectedClientId && clients.length > 0) {
+            const clientToSelect = clients.find(c => c.id === location.state.selectedClientId);
+            if (clientToSelect) {
+                const clientWithProps = {
+                    ...clientToSelect,
+                    properties: getInmueblesByPropietario(clientToSelect.id)
+                };
+                setSelectedClient(clientWithProps);
+                // Clear state to keep URL clean but allow back button if needed (replace=true avoids clutter)
+                navigate(location.pathname, { replace: true, state: {} });
+            }
         }
-    }, [location.state, navigate]);
+    }, [location.state, navigate, clients, getInmueblesByPropietario]);
 
     return (
         <div className="min-h-screen bg-slate-50 pb-8 relative overflow-x-hidden">

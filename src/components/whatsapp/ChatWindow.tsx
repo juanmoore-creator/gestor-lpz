@@ -3,6 +3,7 @@ import { useWhatsappMessages, type WhatsappMessage } from '../../hooks/useWhatsa
 import { useWhatsappSender } from '../../hooks/useWhatsappSender';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 import { Send, User, ChevronLeft, Search, MoreVertical, CheckCheck, X, UserPlus, Link as LinkIcon, Unlink } from 'lucide-react';
 import { clsx } from 'clsx';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
@@ -16,15 +17,18 @@ interface ChatWindowProps {
     conversationId: string | null;
     phoneNumber: string | undefined;
     contactName: string | undefined;
-    onBack?: () => void; // For mobile view
+    assignedTo?: string;
+    onBack?: () => void;
 }
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({
     conversationId,
     phoneNumber,
     contactName,
+    assignedTo,
     onBack
 }) => {
+    const navigate = useNavigate();
     const { messages, loading } = useWhatsappMessages(conversationId);
     const [newMessage, setNewMessage] = useState('');
     const { sendMessage, isSending } = useWhatsappSender();
@@ -180,8 +184,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                                                 </div>
                                                 <button
                                                     onClick={() => {
-                                                        // Navigate to client details if implemented
-                                                        alert(`Navegar a cliente: ${linkedClient.name}`);
+                                                        if (linkedClient) {
+                                                            navigate('/app/clients', { state: { selectedClientId: linkedClient.id } });
+                                                        }
                                                         setShowMenu(false);
                                                     }}
                                                     className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
@@ -278,7 +283,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 {filteredMessages.map((msg) => {
                     const isOutgoing = msg.direction === 'outgoing';
                     const replyContext = msg.reply_to_message_id
-                        ? messages.find(m => m.whatsapp_id === msg.reply_to_message_id)
+                        ? messages.find(m => m.whatsapp_id === msg.reply_to_message_id || m.id === msg.reply_to_message_id)
                         : undefined;
 
                     return (
@@ -313,17 +318,15 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                                     "flex items-center justify-end gap-1 mt-1",
                                     isOutgoing ? "text-blue-100" : "text-slate-400"
                                 )}>
-                                    {!isOutgoing && (
-                                        <button
-                                            onClick={() => {
-                                                setReplyingTo(msg);
-                                                textareaRef.current?.focus();
-                                            }}
-                                            className="mr-auto text-[10px] font-bold hover:underline opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                            Responder
-                                        </button>
-                                    )}
+                                    <button
+                                        onClick={() => {
+                                            setReplyingTo(msg);
+                                            textareaRef.current?.focus();
+                                        }}
+                                        className="mr-auto text-[10px] font-bold hover:underline opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        Responder
+                                    </button>
                                     <span className="text-[10px]">
                                         {format(msg.timestamp.toDate(), 'HH:mm', { locale: es })}
                                     </span>
