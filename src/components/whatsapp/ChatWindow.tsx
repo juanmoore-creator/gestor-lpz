@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useWhatsappMessages } from '../../hooks/useWhatsappMessages';
+import { useWhatsappMessages, type WhatsappMessage } from '../../hooks/useWhatsappMessages';
 import { useWhatsappSender } from '../../hooks/useWhatsappSender';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -24,7 +24,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     const { sendMessage, isSending } = useWhatsappSender();
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearching, setIsSearching] = useState(false);
+    const [replyingTo, setReplyingTo] = useState<WhatsappMessage | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // Filter messages based on search query
     const filteredMessages = messages.filter(msg =>
@@ -42,10 +44,11 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         e.preventDefault();
         if (!newMessage.trim() || !phoneNumber || isSending) return;
 
-        const result = await sendMessage(phoneNumber, newMessage);
+        const result = await sendMessage(phoneNumber, newMessage, replyingTo?.id);
 
         if (result.success) {
             setNewMessage('');
+            setReplyingTo(null);
         } else {
             alert(`Error: ${result.error || 'Error al enviar mensaje'}`);
         }
@@ -172,7 +175,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                                 )}>
                                     {!isOutgoing && (
                                         <button
-                                            onClick={() => setNewMessage(`Reprobando a: "${msg.text.slice(0, 30)}${msg.text.length > 30 ? '...' : ''}"\n`)}
+                                            onClick={() => {
+                                                setReplyingTo(msg);
+                                                textareaRef.current?.focus();
+                                            }}
                                             className="mr-auto text-[10px] font-bold hover:underline opacity-0 group-hover:opacity-100 transition-opacity"
                                         >
                                             Responder
@@ -197,13 +203,32 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                     onSubmit={handleSendMessage}
                     className="flex items-end gap-2 max-w-5xl mx-auto"
                 >
-                    <div className="flex-1 relative">
+                    <div className="flex-1 relative flex flex-col">
+                        {replyingTo && (
+                            <div className="mb-2 p-2 bg-slate-100 border-l-4 border-blue-500 rounded-r flex justify-between items-start animate-in slide-in-from-bottom-2">
+                                <div className="text-xs text-slate-600 max-w-[90%] overflow-hidden">
+                                    <span className="text-blue-600 font-bold block mb-0.5">Respondiendo a:</span>
+                                    <p className="line-clamp-2">{replyingTo.text}</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setReplyingTo(null)}
+                                    className="p-1 hover:bg-slate-200 rounded transition-colors"
+                                >
+                                    <X size={14} className="text-slate-500" />
+                                </button>
+                            </div>
+                        )}
                         <textarea
+                            ref={textareaRef}
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}
                             placeholder="Escribe un mensaje..."
                             rows={1}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none max-h-32"
+                            className={clsx(
+                                "w-full bg-slate-50 border border-slate-200 px-4 py-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none max-h-32",
+                                replyingTo ? "rounded-b-2xl rounded-tr-2xl" : "rounded-2xl"
+                            )}
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter' && !e.shiftKey) {
                                     e.preventDefault();

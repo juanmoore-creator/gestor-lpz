@@ -10,18 +10,26 @@ interface SendMessageResponse {
 export const useWhatsappSender = () => {
     const [isSending, setIsSending] = useState(false);
 
-    const sendMessage = async (phoneNumber: string, text: string): Promise<SendMessageResponse> => {
+    const sendMessage = async (phoneNumber: string, text: string, replyToMessageId?: string): Promise<SendMessageResponse> => {
         setIsSending(true);
         try {
+            const body: any = {
+                to: phoneNumber,
+                text: text.trim(),
+            };
+
+            if (replyToMessageId) {
+                body.context = {
+                    message_id: replyToMessageId
+                };
+            }
+
             const response = await fetch('/api/whatsapp/send-message', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    to: phoneNumber,
-                    text: text.trim(),
-                }),
+                body: JSON.stringify(body),
             });
 
             const data = await response.json();

@@ -15,7 +15,7 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
 
-    let { to, text } = req.body;
+    let { to, text, context } = req.body;
 
     // Sanitize phone number: remove all non-digits
     if (to) {
@@ -36,8 +36,20 @@ export default async function handler(req, res) {
 
     try {
         // 1. Send message via Meta Graph API
-        // Note: Currently using 'type: text' for direct chat. 
-        // For 'type: template', the body structure changes to use the 'template' field.
+        const payload = {
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: to,
+            type: 'text',
+            text: { body: text }
+        };
+
+        if (context?.message_id) {
+            payload.context = {
+                message_id: context.message_id
+            };
+        }
+
         const response = await fetch(
             `https://graph.facebook.com/v22.0/${phoneNumberId}/messages`,
             {
@@ -46,13 +58,7 @@ export default async function handler(req, res) {
                     'Authorization': `Bearer ${apiToken}`,
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    messaging_product: 'whatsapp',
-                    recipient_type: 'individual',
-                    to: to,
-                    type: 'text',
-                    text: { body: text },
-                }),
+                body: JSON.stringify(payload),
             }
         );
 
@@ -72,7 +78,8 @@ export default async function handler(req, res) {
                 from: to,
                 text: text,
                 direction: 'outgoing',
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                ...(context?.message_id && { reply_to_message_id: context.message_id })
             });
         } catch (dbError) {
             console.error('Error saving outgoing message to DB:', dbError);

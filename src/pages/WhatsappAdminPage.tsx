@@ -32,7 +32,7 @@ const WhatsappAdminPage: React.FC = () => {
     const selectedConv = conversations.find(c => c.id === selectedConversationId);
 
     return (
-        <div className="flex h-screen bg-slate-100 overflow-hidden">
+        <div className="flex h-full bg-slate-100 overflow-hidden">
             {/* Sidebar / List - Hidden on mobile if conversation selected */}
             <div className={`w-full md:w-80 lg:w-96 border-r border-slate-200 bg-white flex flex-col shrink-0 ${(selectedConversationId || manualPhone) ? 'hidden md:flex' : 'flex'}`}>
                 <ConversationList

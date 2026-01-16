@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Outlet, useNavigate, NavLink } from 'react-router-dom';
+import { Outlet, useNavigate, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, Home, FolderOpen, Users, CalendarDays, LayoutDashboard, Menu, X } from 'lucide-react';
+import { LogOut, Home, FolderOpen, Users, CalendarDays, LayoutDashboard, Menu, X, MessageCircle } from 'lucide-react';
 
 
 import BottomNav from '../components/BottomNav';
@@ -9,6 +9,8 @@ import BottomNav from '../components/BottomNav';
 const PrivateLayout = () => {
     const { logout } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+    const isWhatsappPage = location.pathname.startsWith('/app/whatsapp');
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     const handleLogout = async () => {
@@ -22,7 +24,7 @@ const PrivateLayout = () => {
         { to: '/app/clients', text: 'Clientes', icon: Users },
         { to: '/app/calendar', text: 'Calendario', icon: CalendarDays },
         { to: '/app/archivos', text: 'Archivos', icon: FolderOpen },
-
+        { to: '/app/whatsapp', text: 'Whatsapp', icon: MessageCircle },
     ];
 
     const linkClass = "flex items-center gap-3 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors";
@@ -140,7 +142,10 @@ const PrivateLayout = () => {
                 )}
             </header>
 
-            <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-8">
+            <main className={isWhatsappPage
+                ? "flex-1 w-full flex flex-col h-[calc(100vh-8rem)] md:h-[calc(100vh-4rem)]"
+                : "flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-8"
+            }>
                 <Outlet />
             </main>
 
