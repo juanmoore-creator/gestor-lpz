@@ -25,7 +25,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     conversationId,
     phoneNumber,
     contactName,
-    assignedTo,
     onBack
 }) => {
     const navigate = useNavigate();
